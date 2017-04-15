@@ -1,47 +1,50 @@
 #include <iostream>
-#include <string>
 #include <vector>
-#include <map>
-#include <utility>
 
-#include <GL/glew.h>
+#include <Eigen/Dense>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#include "render.h"
-#include "helpers.h"
+#include <igl/readOBJ.h>
+#include <igl/viewer/Viewer.h>
 
 using namespace std;
-using namespace glm;
+using namespace Eigen;
 
-vector<vec4> ball_vertices;
-vector<uvec3> ball_faces;
-vector<vec4> ball_normals;
+MatrixX3d V;
+MatrixX3i F;
 
-void sph() {
-  line_shader->drawAxis();
+bool time_paused = false;
 
-  for (int i = 0; i < 5; i++) {
-    mat4 T = glm::translate(mat4(1.0), vec3(i * 1.0));
+bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier) {
+  if (key == ' ')
+    time_paused = !time_paused;
 
-    phong_shader->draw(ball_vertices, ball_faces, ball_normals, T, BLUE);
-  }
+  return false;
 }
 
-void setupSPH () {
-  LoadOBJ("../obj/sphere.obj", ball_vertices, ball_faces, ball_normals);
+bool next_frame(igl::viewer::Viewer& viewer) {
+  if (!time_paused)
+    return false;
+
+  viewer.data.set_mesh(V, F);
+
+  for (int i = 0; i < V.rows(); i++) {
+    V(i, 0) += 0.01;
+  }
+
+  // Signal to render.
+  glfwPostEmptyEvent();
+
+  return false;
 }
 
 int main (int argc, char* argv[]) {
-  initOpenGL();
-  setupSPH();
+  igl::readOBJ("../obj/sphere.obj", V, F);
 
-  while (keepLoopingOpenGL()) {
-    sph();
+  igl::viewer::Viewer viewer;
+  viewer.callback_key_down = &key_down;
+  viewer.callback_post_draw = &next_frame;
 
-    endLoopOpenGL();
-  }
+  viewer.data.set_mesh(V, F);
 
-  cleanupOpenGL();
+  viewer.launch();
 }
