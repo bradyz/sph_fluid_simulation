@@ -5,6 +5,14 @@ class Parameters {
 
 public:
   bool paused;                                      // animation on.
+  double time_step;                                 // s? hopefully.
+
+  double gravity;
+
+  double boundary_penalty;
+  double boundary_min;
+  double boundary_max;
+
   int nb_particles;                                 // number particles.
   double radius;                                    // render radius.
   double mass;                                      // kg.
@@ -17,6 +25,13 @@ public:
 
   void reset() {
     paused = true;
+    time_step = 0.01;
+
+    gravity = -9.8;
+
+    boundary_penalty = 1e4;
+    boundary_min = 0.0;
+    boundary_max = 1.0;
 
     nb_particles = 10;
 

@@ -3,7 +3,6 @@
 
 #include <functional>
 
-#include <igl/readOBJ.h>
 #include <igl/viewer/Viewer.h>
 
 using namespace std;
@@ -32,18 +31,18 @@ bool init(igl::viewer::Viewer& viewer, Simulation *sim) {
   viewer.ngui->addVariable("Mass",                sim->params->mass);
   viewer.ngui->addVariable("Density",             sim->params->density);
   viewer.ngui->addVariable("Viscocity",           sim->params->viscocity);
-  viewer.ngui->addButton("Reset Parameters", [sim](){
-    sim->params->reset();
-  });
+  viewer.ngui->addVariable("Gravity",             sim->params->gravity);
+  viewer.ngui->addVariable("Time Step",           sim->params->time_step);
+  viewer.ngui->addVariable("Current Time",        sim->current_time, false);
+  viewer.ngui->addButton("Reset Parameters",
+                         [sim](){ sim->params->reset(); });
 
   // Simulation controls..
   viewer.ngui->addGroup("Simulation Controls");
-  viewer.ngui->addButton("Toggle Simulation", [sim](){
-    sim->params->paused = !sim->params->paused;
-  });
-  viewer.ngui->addButton("Reset Simulation", [sim](){
-    sim->reset();
-  });
+  viewer.ngui->addButton("Toggle Simulation",
+                         [sim](){ sim->params->paused = !sim->params->paused; });
+  viewer.ngui->addButton("Reset Simulation",
+                         [sim](){ sim->reset(); });
 
   // Generate widgets.
   viewer.screen->performLayout();
@@ -82,15 +81,17 @@ void Simulation::initialize() {
     for (int j = 0; j < params->nb_particles; j++) {
       for (int k = 0; k < params->nb_particles; k++) {
         Particle *particle = new Particle(meshes_.front());
+        particle->m = params->mass;
         particle->r = params->radius;
         particle->c = Vector3d(i * 0.1, j * 0.1, k * 0.1);
+        particle->v = Vector3d(i * 0.1, j * 0.1, k * 0.1);
 
         particles_.push_back(particle);
       }
     }
   }
 
-  cout << "Total particles: " << params->nb_particles << endl;
+  cout << "Total particles: " << particles_.size() << endl;
 }
 
 void Simulation::start() {
@@ -133,7 +134,28 @@ void Simulation::reset() {
 }
 
 void Simulation::step() {
+  int n = particles_.size();
+  double h = params->time_step;
 
+  // New positions.
+  VectorXd c_new(n * 3);
+
+  // Velocity Verlet (update position, then velocity).
+  for (int i = 0; i < n; i++) {
+    c_new.segment<3>(i * 3) = particles_[i]->c + h * particles_[i]->v;
+
+    particles_[i]->c = c_new.segment<3>(i * 3);
+  }
+
+  // F = -dV'.
+  VectorXd forces = getForces(c_new);
+
+  // F = ma.
+  for (int i = 0; i < n; i++)
+    particles_[i]->v += h / particles_[i]->m * forces.segment<3>(i * 3);
+
+  // Update the clock.
+  current_time += h;
 }
 
 void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
@@ -164,9 +186,44 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
     V.block(total_v, 0, nb_v, 3) = particle->getV();
     F.block(total_f, 0, nb_f, 3) = particle->getF().array() + total_v;
 
-    // Get the next offset. 
+    // Get the next offset.
     total_v += nb_v;
     total_f += nb_f;
+  }
+}
+
+VectorXd Simulation::getForces(const VectorXd &c_new) const {
+  // Accumulation of different forces.
+  VectorXd force(c_new.rows());
+  force.setZero();
+
+  getGravityForce(c_new, force);
+  getBoundaryForce(c_new, force);
+
+  return force;
+}
+
+void Simulation::getGravityForce(const VectorXd &c_new, VectorXd &force) const {
+  for (int i = 0; i < particles_.size(); i++)
+    force(i * 3 + 1) += particles_[i]->m * params->gravity;
+}
+
+void Simulation::getBoundaryForce(const VectorXd &c_new, VectorXd &force) const {
+  for (int i = 0; i < particles_.size(); i++) {
+    const Vector3d &c = c_new.segment<3>(i * 3);
+    double m = particles_[i]->m;
+
+    for (int j = 0; j < 3; j++) {
+      double p = c(j);
+      double k = params->boundary_penalty;
+      double b_min = params->boundary_min;
+      double b_max = params->boundary_max;
+
+      if (p < b_min)
+        force(i * 3 + j) += (b_min - p) * k * m;
+      if (p > b_max)
+        force(i * 3 + j) += (b_max - p) * k * m;
+    }
   }
 }
 
