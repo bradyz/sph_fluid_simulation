@@ -75,7 +75,8 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
 void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
 
-  meshes_.push_back(new Mesh("../obj/sphere.obj"));
+  // The sphere mesh has a radius of 0.1.
+  meshes_.push_back(new Mesh("../obj/sphere.obj", 10.0));
 
   for (int i = 0; i < params->nb_particles; i++) {
     for (int j = 0; j < params->nb_particles; j++) {
@@ -83,8 +84,8 @@ void Simulation::initialize() {
         Particle *particle = new Particle(meshes_.front());
         particle->m = params->mass;
         particle->r = params->radius;
-        particle->c = Vector3d(i * 0.1, j * 0.1, k * 0.1);
-        particle->v = Vector3d(i * 0.1, j * 0.1, k * 0.1);
+        particle->c = Vector3d(i * 0.05, j * 0.05, k * 0.05);
+        particle->v = Vector3d(i * 0.05, j * 0.05, k * 0.05);
 
         particles_.push_back(particle);
       }
@@ -199,6 +200,7 @@ VectorXd Simulation::getForces(const VectorXd &c_new) const {
 
   getGravityForce(c_new, force);
   getBoundaryForce(c_new, force);
+  getCollisionForce(c_new, force);
 
   return force;
 }
@@ -215,7 +217,7 @@ void Simulation::getBoundaryForce(const VectorXd &c_new, VectorXd &force) const 
 
     for (int j = 0; j < 3; j++) {
       double p = c(j);
-      double k = params->boundary_penalty;
+      double k = params->penalty_coefficient;
       double b_min = params->boundary_min;
       double b_max = params->boundary_max;
 
@@ -223,6 +225,28 @@ void Simulation::getBoundaryForce(const VectorXd &c_new, VectorXd &force) const 
         force(i * 3 + j) += (b_min - p) * k * m;
       if (p > b_max)
         force(i * 3 + j) += (b_max - p) * k * m;
+    }
+  }
+}
+
+void Simulation::getCollisionForce(const VectorXd &c_new, VectorXd &force) const {
+  for (int i = 0; i < particles_.size(); i++) {
+    for (int j = i+1; j < particles_.size(); j++) {
+      double k = params->penalty_coefficient;
+      double r = particles_[i]->r + particles_[j]->r;
+
+      const Vector3d &u = c_new.segment<3>(i * 3);
+      const Vector3d &v = c_new.segment<3>(j * 3);
+
+      Vector3d w = u - v;
+      double diff = w.squaredNorm() - r * r;
+
+      if (diff < 0.0) {
+        Vector3d f = -k * diff * w;
+
+        force.segment<3>(i * 3) += f;
+        force.segment<3>(j * 3) -= f;
+      }
     }
   }
 }

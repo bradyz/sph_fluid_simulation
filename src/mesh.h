@@ -8,8 +8,15 @@
 class Mesh {
 
 public:
-  Mesh(const char *filename) {
+  Mesh(const char *filename, double scale=1.0) {
     igl::readOBJ(filename, V_, F_);
+
+    // Zero center.
+    Eigen::Vector3d centroid = V_.rowwise().sum() / V_.rows();
+    V_.rowwise() -= centroid.transpose();
+
+    // Normalize.
+    V_ *= scale;
   }
 
   const Eigen::MatrixX3d &getV() const { return V_; }

@@ -9,7 +9,7 @@ public:
 
   double gravity;
 
-  double boundary_penalty;
+  double penalty_coefficient;
   double boundary_min;
   double boundary_max;
 
@@ -25,17 +25,17 @@ public:
 
   void reset() {
     paused = true;
-    time_step = 0.01;
+    time_step = 0.001;
 
     gravity = -9.8;
 
-    boundary_penalty = 1e4;
+    penalty_coefficient = 1e6;
     boundary_min = 0.0;
     boundary_max = 1.0;
 
     nb_particles = 10;
 
-    radius = 0.1;
+    radius = 0.01;
     mass = 0.012;
     density = 1000.0;
     viscocity = 50.0;

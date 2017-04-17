@@ -13,6 +13,7 @@ class Simulation {
 
 public:
   Parameters *params;
+  double current_time;
 
   Simulation() : params(new Parameters()), current_time(0.0) { }
 
@@ -21,8 +22,6 @@ public:
   void step();
   void reset();
 
-  double current_time;
-
   // Puts the entire simulation into the two matrices (world coordinates).
   void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F) const;
 
@@ -30,6 +29,7 @@ public:
 
   void getGravityForce(const Eigen::VectorXd &c, Eigen::VectorXd &force) const;
   void getBoundaryForce(const Eigen::VectorXd &c, Eigen::VectorXd &force) const;
+  void getCollisionForce(const Eigen::VectorXd &c, Eigen::VectorXd &force) const;
 
   ~Simulation();
 
