@@ -14,12 +14,16 @@ public:
   Eigen::Vector3d v;                                // velocity, m / s.
   Eigen::Vector3d f;                                // body forces, N / m^3.
 
+  double k;                                         // gas constant, N m / kg.
+
   double rho_0;                                     // rest density, kg / m^3.
   double rho;                                       // density, kg / m^3.
 
   double mu;                                        // viscocity, N s / m^3.
 
   Particle(const Mesh *mesh) : mesh_(mesh) { }
+
+  double getPressure() const { return k * (rho_0 - rho); }
 
   const Eigen::MatrixX3d getV() const {
     return (mesh_->getV() * r).rowwise() + c.transpose();

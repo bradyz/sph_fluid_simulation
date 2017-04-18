@@ -18,6 +18,9 @@ public:
   double mass;                                      // kg.
   double density;                                   // kg / m^3.
   double viscocity;                                 // N s / m^3.
+  double gas_constant;                              // N m / kg.
+
+  double kernel_support;
 
   Parameters() {
     reset();
@@ -39,6 +42,9 @@ public:
     mass = 0.012;
     density = 1000.0;
     viscocity = 50.0;
+    gas_constant = 20.0;
+
+    kernel_support = 50.0;
   }
 
 };

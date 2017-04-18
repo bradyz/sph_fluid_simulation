@@ -82,10 +82,14 @@ void Simulation::initialize() {
     for (int j = 0; j < params->nb_particles; j++) {
       for (int k = 0; k < params->nb_particles; k++) {
         Particle *particle = new Particle(meshes_.front());
+
         particle->m = params->mass;
         particle->r = params->radius;
-        particle->c = Vector3d(i * 0.05, j * 0.05, k * 0.05);
-        particle->v = Vector3d(i * 0.05, j * 0.05, k * 0.05);
+        particle->c = Vector3d(2 * i * particle->r, 2 * j * particle->r, 2 * k * particle->r);
+        particle->v = Vector3d(0.0, 0.0, 0.0);
+        particle->k = params->gas_constant;
+        particle->rho_0 = 1.0;
+        particle->rho = 1.0;
 
         particles_.push_back(particle);
       }
@@ -138,18 +142,37 @@ void Simulation::step() {
   int n = particles_.size();
   double h = params->time_step;
 
-  // New positions.
-  VectorXd c_new(n * 3);
-
   // Velocity Verlet (update position, then velocity).
-  for (int i = 0; i < n; i++) {
-    c_new.segment<3>(i * 3) = particles_[i]->c + h * particles_[i]->v;
+  for (int i = 0; i < n; i++)
+    particles_[i]->c = particles_[i]->c + h * particles_[i]->v;
 
-    particles_[i]->c = c_new.segment<3>(i * 3);
+  // Update densities.
+  for (int i = 0; i < n; i++) {
+    double rho_i = 0.0;
+
+    for (int j = 0; j < n; j++) {
+      double m = particles_[j]->m;
+      double r = (particles_[i]->c - particles_[j]->c).norm();
+      double s = params->kernel_support;
+      double c = r / s;
+
+      double w = 1.0 / (M_PI * pow(s, 3));
+
+      if (0.0 <= c && c <= 1.0)
+        w *= 1.0 - 3.0 / 2.0 * pow(c, 2) + 3.0 / 4.0 * pow(c, 3);
+      else if (1.0 <= c && c <= 2.0)
+        w *= 1.0 / 4.0 * pow(2.0 - c, 3);
+      else
+        w *= 0.0;
+
+      rho_i += m * w;
+    }
+
+    particles_[i]->rho = rho_i;
   }
 
   // F = -dV'.
-  VectorXd forces = getForces(c_new);
+  VectorXd forces = getForces();
 
   // F = ma.
   for (int i = 0; i < n; i++)
@@ -193,26 +216,27 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
   }
 }
 
-VectorXd Simulation::getForces(const VectorXd &c_new) const {
+VectorXd Simulation::getForces() const {
   // Accumulation of different forces.
-  VectorXd force(c_new.rows());
+  VectorXd force(particles_.size() * 3);
   force.setZero();
 
-  getGravityForce(c_new, force);
-  getBoundaryForce(c_new, force);
-  getCollisionForce(c_new, force);
+  getGravityForce(force);
+  getBoundaryForce(force);
+  getCollisionForce(force);
+  getPressureForce(force);
 
   return force;
 }
 
-void Simulation::getGravityForce(const VectorXd &c_new, VectorXd &force) const {
+void Simulation::getGravityForce(VectorXd &force) const {
   for (int i = 0; i < particles_.size(); i++)
     force(i * 3 + 1) += particles_[i]->m * params->gravity;
 }
 
-void Simulation::getBoundaryForce(const VectorXd &c_new, VectorXd &force) const {
+void Simulation::getBoundaryForce(VectorXd &force) const {
   for (int i = 0; i < particles_.size(); i++) {
-    const Vector3d &c = c_new.segment<3>(i * 3);
+    const Vector3d &c = particles_[i]->c;
     double m = particles_[i]->m;
 
     for (int j = 0; j < 3; j++) {
@@ -229,16 +253,13 @@ void Simulation::getBoundaryForce(const VectorXd &c_new, VectorXd &force) const 
   }
 }
 
-void Simulation::getCollisionForce(const VectorXd &c_new, VectorXd &force) const {
+void Simulation::getCollisionForce(VectorXd &force) const {
   for (int i = 0; i < particles_.size(); i++) {
     for (int j = i+1; j < particles_.size(); j++) {
       double k = params->penalty_coefficient;
       double r = particles_[i]->r + particles_[j]->r;
 
-      const Vector3d &u = c_new.segment<3>(i * 3);
-      const Vector3d &v = c_new.segment<3>(j * 3);
-
-      Vector3d w = u - v;
+      Vector3d w = particles_[i]->c - particles_[j]->c;
       double diff = w.squaredNorm() - r * r;
 
       if (diff < 0.0) {
@@ -248,6 +269,38 @@ void Simulation::getCollisionForce(const VectorXd &c_new, VectorXd &force) const
         force.segment<3>(j * 3) -= f;
       }
     }
+  }
+}
+
+void Simulation::getPressureForce(VectorXd &force) const {
+  for (int i = 0; i < particles_.size(); i++) {
+    Vector3d f_i(0.0, 0.0, 0.0);
+
+    for (int j = 0; j < particles_.size(); j++) {
+      double m = particles_[j]->m;
+      double p_i = particles_[i]->getPressure();
+      double p_j = particles_[j]->getPressure();
+      double rho_j = particles_[j]->rho;
+
+      Vector3d u = particles_[i]->c - particles_[j]->c;
+      double r = u.norm();
+      double s = params->kernel_support;
+      double c = r / s;
+
+      // Gradient of kernel.
+      double dwdr = 1.0 / (M_PI * pow(s, 4));
+
+      if (0.0 <= c && c <= 1.0)
+        dwdr *= (3.0 * c) * (-1.0 + 3.0 / 4.0 * c);
+      else if (1.0 <= c && c <= 2.0)
+        dwdr *= (-3.0 / 4.0 * pow(2.0 - c, 2));
+      else
+        dwdr *= 0.0;
+
+      f_i += m * (p_i + p_j) / 2.0 / rho_j * dwdr * u;
+    }
+
+    force.segment<3>(i * 3) -= f_i;
   }
 }
 

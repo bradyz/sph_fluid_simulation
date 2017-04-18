@@ -25,11 +25,12 @@ public:
   // Puts the entire simulation into the two matrices (world coordinates).
   void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F) const;
 
-  Eigen::VectorXd getForces(const Eigen::VectorXd &c_new) const;
+  Eigen::VectorXd getForces() const;
 
-  void getGravityForce(const Eigen::VectorXd &c, Eigen::VectorXd &force) const;
-  void getBoundaryForce(const Eigen::VectorXd &c, Eigen::VectorXd &force) const;
-  void getCollisionForce(const Eigen::VectorXd &c, Eigen::VectorXd &force) const;
+  void getGravityForce(Eigen::VectorXd &force) const;
+  void getBoundaryForce(Eigen::VectorXd &force) const;
+  void getCollisionForce(Eigen::VectorXd &force) const;
+  void getPressureForce(Eigen::VectorXd &force) const;
 
   ~Simulation();
 
