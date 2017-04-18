@@ -304,6 +304,43 @@ void Simulation::getPressureForce(VectorXd &force) const {
   }
 }
 
+void Simulation::getViscosityForce(VectorXd &force) const {
+  for (int i = 0; i < particles_.size(); i++) {
+    Vector3d f_i(0.0, 0.0, 0.0);
+
+    for (int j = 0; j < particles_.size(); j++) {
+      double m = particles_[j]->m;
+
+      double mu_i = particles_[i]->mu;
+      double mu_j = particles_[j]->mu;
+
+      Vector3d v_i = particles_[i]->v;
+      Vector3d v_j = particles_[j]->v;
+
+      double rho_j = particles_[j]->rho;
+
+      Vector3d u = particles_[i]->c - particles_[j]->c;
+      double r = u.norm();
+      double s = params->kernel_support;
+      double c = r / s;
+
+      double dw2dr = 1.0 / (M_PI * pow(s, 5));
+
+      if (0.0 <= c && c <= 1.0)
+        dw2dr *= 3.0 * (-1.0 + 3.0 / 2.0 * c);
+      else if (1.0 <= c && c <= 2.0)
+        dw2dr *= 3.0 / 2.0 * (2.0 - c);
+      else
+        dw2dr *= 0.0;
+
+      // THIS LINE IS FUCKED
+      f_i += (mu_i + mu_j) / 2.0 * m * (v_j - v_i) / rho_j * dw2dr;
+    }
+
+    force.segment<3>(i * 3) += f_i;
+  }
+}
+
 Simulation::~Simulation() {
   delete params;
 
