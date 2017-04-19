@@ -9,6 +9,7 @@ public:
 
   double gravity;
 
+  double coefficient_of_restitution;
   double penalty_coefficient;
   double boundary_min;
   double boundary_max;
@@ -32,9 +33,10 @@ public:
 
     gravity = -9.8;
 
+    coefficient_of_restitution = 0.2;
     penalty_coefficient = 1e6;
     boundary_min = 0.0;
-    boundary_max = 1.0;
+    boundary_max = 0.5;
 
     nb_particles = 10;
 
@@ -44,7 +46,7 @@ public:
     viscocity = 50.0;
     gas_constant = 20.0;
 
-    kernel_support = 50.0;
+    kernel_support = 10.0;
   }
 
 };

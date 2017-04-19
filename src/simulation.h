@@ -4,6 +4,7 @@
 #include "mesh.h"
 #include "parameters.h"
 #include "particle.h"
+#include "collision.h"
 
 #include <vector>
 
@@ -25,11 +26,11 @@ public:
   // Puts the entire simulation into the two matrices (world coordinates).
   void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F) const;
 
-  Eigen::VectorXd getForces() const;
+  void applyImpulses(BVHTree &tree);
 
+  Eigen::VectorXd getForces() const;
   void getGravityForce(Eigen::VectorXd &force) const;
   void getBoundaryForce(Eigen::VectorXd &force) const;
-  void getCollisionForce(Eigen::VectorXd &force) const;
   void getPressureForce(Eigen::VectorXd &force) const;
   void getViscosityForce(Eigen::VectorXd &force) const;
 

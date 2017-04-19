@@ -1,7 +1,10 @@
 #include "simulation.h"
 #include "parameters.h"
+#include "collision.h"
 
 #include <functional>
+#include <set>
+#include <unordered_map>
 
 #include <igl/viewer/Viewer.h>
 
@@ -85,7 +88,9 @@ void Simulation::initialize() {
 
         particle->m = params->mass;
         particle->r = params->radius;
-        particle->c = Vector3d(2 * i * particle->r, 2 * j * particle->r, 2 * k * particle->r);
+        particle->c = Vector3d(2.0 * i * particle->r,
+                               2.0 * j * particle->r,
+                               2.0 * k * particle->r);
         particle->v = Vector3d(0.0, 0.0, 0.0);
         particle->k = params->gas_constant;
         particle->rho_0 = 1.0;
@@ -145,6 +150,11 @@ void Simulation::step() {
   // Velocity Verlet (update position, then velocity).
   for (int i = 0; i < n; i++)
     particles_[i]->c = particles_[i]->c + h * particles_[i]->v;
+
+  // Build BVH Tree.
+  BVHTree tree(particles_);
+  
+  applyImpulses(tree);
 
   // Update densities.
   for (int i = 0; i < n; i++) {
@@ -216,6 +226,52 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
   }
 }
 
+void Simulation::applyImpulses(BVHTree &tree) {
+  // Reverse mapping.
+  unordered_map<const Particle*, int> particle_to_index;
+  for (int i = 0; i < particles_.size(); i++)
+    particle_to_index[particles_[i]] = i;
+
+  // Collisions resolved.
+  set<Collision> visited;
+
+  for (const Particle *particle : particles_) {
+    vector<Collision> collisions;
+    tree.getCollisions(particle, particle->r, collisions);
+
+    for (Collision &collision : collisions) {
+      // Have resolved collision before.
+      if (visited.find(collision) != visited.end())
+        continue;
+
+      // Mark collision as resolved.
+      visited.insert(collision);
+
+      int a = particle_to_index[collision.a];
+      int b = particle_to_index[collision.b];
+
+      // Vector from b to a.
+      Vector3d n_hat = (particles_[a]->c - particles_[b]->c).normalized();
+      double v_minus = (particles_[a]->v - particles_[b]->v).dot(n_hat);
+
+      // Collision has already been resolved in previous timestep.
+      if (v_minus > 0.0)
+        continue;
+
+      // Want v_new = -c v_old.
+      double m1 = particles_[a]->m;
+      double m2 = particles_[b]->m;
+      double c = params->coefficient_of_restitution;
+      double j = -(1.0 + c) * v_minus / (1.0 / m1 + 1.0 / m2);
+      Vector3d J = j * n_hat;
+
+      // Apply impulse.
+      particles_[a]->v += 1.0 / m1 * J;
+      particles_[b]->v -= 1.0 / m2 * J;
+    }
+  }
+}
+
 VectorXd Simulation::getForces() const {
   // Accumulation of different forces.
   VectorXd force(particles_.size() * 3);
@@ -223,8 +279,8 @@ VectorXd Simulation::getForces() const {
 
   getGravityForce(force);
   getBoundaryForce(force);
-  getCollisionForce(force);
   getPressureForce(force);
+  // getViscosityForce(force);
 
   return force;
 }
@@ -249,25 +305,6 @@ void Simulation::getBoundaryForce(VectorXd &force) const {
         force(i * 3 + j) += (b_min - p) * k * m;
       if (p > b_max)
         force(i * 3 + j) += (b_max - p) * k * m;
-    }
-  }
-}
-
-void Simulation::getCollisionForce(VectorXd &force) const {
-  for (int i = 0; i < particles_.size(); i++) {
-    for (int j = i+1; j < particles_.size(); j++) {
-      double k = params->penalty_coefficient;
-      double r = particles_[i]->r + particles_[j]->r;
-
-      Vector3d w = particles_[i]->c - particles_[j]->c;
-      double diff = w.squaredNorm() - r * r;
-
-      if (diff < 0.0) {
-        Vector3d f = -k * diff * w;
-
-        force.segment<3>(i * 3) += f;
-        force.segment<3>(j * 3) -= f;
-      }
     }
   }
 }
