@@ -19,7 +19,6 @@ public:
   Simulation() : params(new Parameters()), current_time(0.0) { }
 
   void initialize();
-  void start();
   void step();
   void reset();
 

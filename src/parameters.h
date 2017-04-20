@@ -33,8 +33,8 @@ public:
 
     gravity = -9.8;
 
-    coefficient_of_restitution = 0.8;
-    penalty_coefficient = 1e4;
+    coefficient_of_restitution = 0.2;
+    penalty_coefficient = 1e3;
     boundary_min = 0.0;
     boundary_max = 5.0;
 

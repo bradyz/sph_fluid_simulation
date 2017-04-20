@@ -2,84 +2,11 @@
 #include "parameters.h"
 #include "collision.h"
 
-#include <functional>
 #include <set>
 #include <unordered_map>
 
-#include <igl/viewer/Viewer.h>
-
 using namespace std;
 using namespace Eigen;
-
-// anonymous namespace to handle LibIGL viewer.
-namespace {
-
-bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
-              Simulation *sim) {
-  if (key == ' ')
-    sim->params->paused = !sim->params->paused;
-  else if (key == 'R')
-    sim->reset();
-
-  return false;
-}
-
-bool init(igl::viewer::Viewer& viewer, Simulation *sim) {
-  viewer.ngui->addWindow(Vector2i(220, 10), "SPH Fluid Simulation");
-
-  // Simulation environment variables.
-  viewer.ngui->addGroup("Simulation Parameters");
-  viewer.ngui->addVariable("Number of Particles", sim->params->nb_particles);
-  viewer.ngui->addVariable("Radius",              sim->params->radius);
-  viewer.ngui->addVariable("Mass",                sim->params->mass);
-  viewer.ngui->addVariable("Density",             sim->params->density);
-  viewer.ngui->addVariable("Viscocity",           sim->params->viscocity);
-  viewer.ngui->addVariable("Gravity",             sim->params->gravity);
-  viewer.ngui->addVariable("Time Step",           sim->params->time_step);
-  viewer.ngui->addVariable("Current Time",        sim->current_time, false);
-  viewer.ngui->addButton("Reset Parameters",
-                         [sim](){ sim->params->reset(); });
-
-  // Simulation controls..
-  viewer.ngui->addGroup("Simulation Controls");
-  viewer.ngui->addButton("Toggle Simulation",
-                         [sim](){ sim->params->paused = !sim->params->paused; });
-  viewer.ngui->addButton("Reset Simulation",
-                         [sim](){ sim->reset(); });
-
-  // Generate widgets.
-  viewer.screen->performLayout();
-
-  return false;
-}
-
-bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
-  // Take a step.
-  if (!sim->params->paused)
-    sim->step();
-
-  // Get the current mesh of the simulation.
-  MatrixX3d V;
-  MatrixX3i F;
-  sim->render(V, F);
-
-  MatrixX3d P;
-  MatrixX2i E;
-  MatrixX3d C;
-  sim->getBounds(P, E, C);
-
-  // Update the viewer.
-  viewer.data.clear();
-  viewer.data.set_mesh(V, F);
-  viewer.data.set_edges(P, E, C);
-
-  // Signal to render.
-  glfwPostEmptyEvent();
-
-  return false;
-}
-
-} // end anonymous namespace to handle LibIGL viewer.
 
 void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
@@ -98,7 +25,7 @@ void Simulation::initialize() {
                                2.0 * j * particle->r,
                                2.0 * k * particle->r);
         particle->c += Vector3d(0.5, 0.0, 0.5);
-        particle->v = Vector3d(0.0, 0.0, 0.0);
+        particle->v = Vector3d(i, j, k);
         particle->k = params->gas_constant;
         particle->rho_0 = params->density;
         particle->rho = params->density;
@@ -109,34 +36,6 @@ void Simulation::initialize() {
   }
 
   cout << "Total particles: " << particles_.size() << endl;
-}
-
-void Simulation::start() {
-  igl::viewer::Viewer viewer;
-  viewer.callback_key_down = bind(key_down,
-                                  placeholders::_1,
-                                  placeholders::_2,
-                                  placeholders::_3,
-                                  this);
-  viewer.callback_init = bind(init, placeholders::_1, this);
-  viewer.callback_post_draw = bind(post_draw, placeholders::_1, this);
-
-  // Get all the meshes in the simulation.
-  MatrixX3d V;
-  MatrixX3i F;
-  render(V, F);
-
-  MatrixX3d P;
-  MatrixX2i E;
-  MatrixX3d C;
-  getBounds(P, E, C);
-
-  // Update the viewer.
-  viewer.data.clear();
-  viewer.data.set_mesh(V, F);
-  viewer.data.set_edges(P, E, C);
-
-  viewer.launch();
 }
 
 void Simulation::reset() {
@@ -271,6 +170,10 @@ void Simulation::applyImpulses(BVHTree &tree) {
       int a = particle_to_index[collision.a];
       int b = particle_to_index[collision.b];
 
+      // Ignore self collision.
+      if (a == b)
+        continue;
+
       // Vector from b to a.
       Vector3d n_hat = (particles_[a]->c - particles_[b]->c).normalized();
       double v_minus = (particles_[a]->v - particles_[b]->v).dot(n_hat);
@@ -340,7 +243,7 @@ VectorXd Simulation::getForces(BVHTree &tree) const {
 
   getGravityForce(force);
   getBoundaryForce(force);
-  // getPressureForce(force, tree);
+  getPressureForce(force, tree);
   // getViscosityForce(force);
 
   return force;

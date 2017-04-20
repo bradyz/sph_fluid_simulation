@@ -89,9 +89,6 @@ void BVHNode::getCollisions(const Particle *lhs, double radius,
 
   if (left == nullptr && right == nullptr) {
     for (const Particle *rhs : items) {
-      if (lhs == rhs)
-        continue;
-
       if (sphereSphereIntersect(lhs->c, radius, rhs->c, rhs->r))
         collisions.push_back(Collision(lhs, rhs));
     }
