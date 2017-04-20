@@ -23,7 +23,7 @@ public:
 
   Particle(const Mesh *mesh) : mesh_(mesh) { }
 
-  double getPressure() const { return k * (rho_0 - rho); }
+  double getPressure() const { return k * (rho - rho_0); }
 
   const Eigen::MatrixX3d getV() const {
     return (mesh_->getV() * r).rowwise() + c.transpose();

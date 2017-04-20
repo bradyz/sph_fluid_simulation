@@ -21,11 +21,13 @@ void Simulation::initialize() {
 
         particle->m = params->mass;
         particle->r = params->radius;
-        particle->c = Vector3d(2.0 * i * particle->r,
-                               2.0 * j * particle->r,
-                               2.0 * k * particle->r);
-        particle->c += Vector3d(0.5, 0.0, 0.5);
-        particle->v = Vector3d(i, j, k);
+        particle->c = Vector3d(5.0 * i * particle->r,
+                               5.0 * j * particle->r,
+                               5.0 * k * particle->r);
+        particle->c += Vector3d(2.5, 1.0, 2.5);
+        if (j % 2 == 0)
+          particle->c += Vector3d(0.5, 0.0, 0.0);
+
         particle->k = params->gas_constant;
         particle->rho_0 = params->density;
         particle->rho = params->density;
@@ -60,14 +62,20 @@ void Simulation::step() {
   double h = params->time_step;
 
   // Velocity Verlet (update position, then velocity).
-  for (int i = 0; i < n; i++)
+  for (int i = 0; i < n; i++) {
     particles_[i]->c += h * particles_[i]->v;
+
+    if (isnan(particles_[i]->c(0))) {
+      cerr << "NaNs in particle positions." << endl;
+      exit(1);
+    }
+  }
 
   // Build BVH Tree.
   BVHTree tree(particles_);
 
-  applyImpulses(tree);
   updateDensities(tree);
+  applyImpulses(tree);
 
   // F = -dV'.
   VectorXd forces = getForces(tree);
@@ -108,7 +116,7 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
     int nb_f = particle->getF().rows();
 
     for (int i = total_v; i < total_v + nb_v; i++)
-      C(i) = particle->rho;
+      C(i) = log(particle->rho);
 
     V.block(total_v, 0, nb_v, 3) = particle->getV();
     F.block(total_f, 0, nb_f, 3) = particle->getF().array() + total_v;
@@ -217,9 +225,6 @@ void Simulation::updateDensities(BVHTree &tree) {
       int a = particle_to_index[collision.a];
       int b = particle_to_index[collision.b];
 
-      if (particles_[a] != particles_[i])
-        swap(a, b);
-
       double m = particles_[b]->m;
       double r = (particles_[a]->c - particles_[b]->c).norm();
       double s = params->kernel_radius;
@@ -295,9 +300,6 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
       if (particles_[a] != particles_[i])
         swap(a, b);
 
-      if (a == b)
-        continue;
-
       double m = particles_[b]->m;
 
       double p_i = particles_[a]->getPressure();
@@ -320,7 +322,13 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
       else
         dwdr *= 0.0;
 
-      f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dwdr * u.normalized() / s;
+      // cout << "m: " << m << endl;
+      // cout << "p_i: " << p_i << endl;
+      // cout << "p_j: " << p_j << endl;
+      // cout << "rho_i: " << rho_i << endl;
+      // cout << "rho_j: " << rho_j << endl;
+
+      f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dwdr * u;
     }
 
     force.segment<3>(i * 3) += f_i;

@@ -72,9 +72,9 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
 
   // Update the viewer.
   viewer.data.clear();
+  viewer.data.set_edges(P, E, EC);
   viewer.data.set_mesh(V, F);
   viewer.data.set_colors(VC);
-  viewer.data.set_edges(P, E, EC);
 
   // Signal to render.
   glfwPostEmptyEvent();
