@@ -24,20 +24,20 @@ void Simulation::initialize() {
         particle->c = Vector3d(3.0 * i * particle->r,
                                3.0 * j * particle->r,
                                3.0 * k * particle->r);
-        particle->c += Vector3d(2.5, 0.5, 2.5);
-        if (j % 2 == 0)
-          particle->c += Vector3d(0.5, 0.0, 0.0);
+        particle->c += Vector3d(2.0, 1.5, 2.0);
 
         particle->v = Vector3d(0.0, 0.0, 0.0);
         particle->k = params->gas_constant;
         particle->rho_0 = params->density;
         particle->rho = params->density;
+        particle->mu = params->viscocity;
 
         particles_.push_back(particle);
       }
     }
   }
 
+  // Original positions calculate rest density.
   BVHTree tree(particles_);
   updateDensities(tree);
 
@@ -68,17 +68,20 @@ void Simulation::step() {
   int n = particles_.size();
   double h = params->time_step;
 
-  // Velocity Verlet (update position, then velocity).
   for (int i = 0; i < n; i++) {
-    particles_[i]->c += h * particles_[i]->v;
-
-    if (isnan(particles_[i]->c(0))) {
-      cerr << "NaNs in particle positions." << endl;
-      cout << particles_[i]->c.transpose() << endl;
-      cout << particles_[i]->v.transpose() << endl;
-      exit(1);
+    for (int j = 0; j < 3; j++) {
+      if (isnan(particles_[i]->c(j)) || isnan(particles_[i]->v(j))) {
+        cerr << "NaNs in particle attributes." << endl;
+        cout << "c: " << particles_[i]->c.transpose() << endl;
+        cout << "v: " << particles_[i]->v.transpose() << endl;
+        exit(1);
+      }
     }
   }
+
+  // Velocity Verlet (update position, then velocity).
+  for (int i = 0; i < n; i++)
+    particles_[i]->c += h * particles_[i]->v;
 
   // Build BVH Tree.
   BVHTree tree(particles_);
@@ -386,7 +389,6 @@ void Simulation::getViscosityForce(VectorXd &force, BVHTree &tree) const {
       else
         dw2dr *= 0.0;
 
-      // THIS LINE IS FUCKED
       f_i += (mu_i + mu_j) / 2.0 * m * (v_j - v_i) / rho_j * dw2dr;
     }
 

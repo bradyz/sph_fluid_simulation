@@ -2,7 +2,7 @@
 
 void Parameters::reset() {
   paused = true;
-  time_step = 0.006;
+  time_step = 0.01;
 
   gravity = -9.8;
 
@@ -15,8 +15,8 @@ void Parameters::reset() {
 
   radius = 0.06;
   mass = 0.112;
-  density = 1.225;
-  viscocity = 50.0;
+  density = 1.0;
+  viscocity = 1.0;
   gas_constant = 20.0;
 
   kernel_radius = 0.500;

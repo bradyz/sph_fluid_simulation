@@ -12,7 +12,6 @@ public:
   double m;                                         // mass, kg.
   Eigen::Vector3d c;                                // position, m.
   Eigen::Vector3d v;                                // velocity, m / s.
-  Eigen::Vector3d f;                                // body forces, N / m^3.
 
   double k;                                         // gas constant, N m / kg.
 
