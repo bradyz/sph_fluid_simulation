@@ -24,10 +24,11 @@ void Simulation::initialize() {
         particle->c = Vector3d(3.0 * i * particle->r,
                                3.0 * j * particle->r,
                                3.0 * k * particle->r);
-        particle->c += Vector3d(2.5, 1.0, 2.5);
+        particle->c += Vector3d(2.5, 0.5, 2.5);
         if (j % 2 == 0)
           particle->c += Vector3d(0.5, 0.0, 0.0);
 
+        particle->v = Vector3d(0.0, 0.0, 0.0);
         particle->k = params->gas_constant;
         particle->rho_0 = params->density;
         particle->rho = params->density;
@@ -73,6 +74,8 @@ void Simulation::step() {
 
     if (isnan(particles_[i]->c(0))) {
       cerr << "NaNs in particle positions." << endl;
+      cout << particles_[i]->c.transpose() << endl;
+      cout << particles_[i]->v.transpose() << endl;
       exit(1);
     }
   }
@@ -327,12 +330,6 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
         dwdr *= -1.0 / 4.0 * pow(2.0 - c, 2);
       else
         dwdr *= 0.0;
-
-      // cout << "m: " << m << endl;
-      // cout << "p_i: " << p_i << endl;
-      // cout << "p_j: " << p_j << endl;
-      // cout << "rho_i: " << rho_i << endl;
-      // cout << "rho_j: " << rho_j << endl;
 
       f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dwdr * u;
     }

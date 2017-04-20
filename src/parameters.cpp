@@ -14,10 +14,10 @@ void Parameters::reset() {
   nb_particles = 5;
 
   radius = 0.06;
-  mass = 0.012;
+  mass = 0.112;
   density = 1.225;
   viscocity = 50.0;
   gas_constant = 20.0;
 
-  kernel_radius = 0.200;
+  kernel_radius = 0.500;
 }
