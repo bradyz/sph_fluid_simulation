@@ -25,13 +25,16 @@ public:
 
   // Puts the entire simulation into the two matrices (world coordinates).
   void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F) const;
+  void getBounds(Eigen::MatrixX3d &V, Eigen::MatrixX2i &E,
+                 Eigen::MatrixX3d &C) const;
 
   void applyImpulses(BVHTree &tree);
+  void updateDensities(BVHTree &tree);
 
-  Eigen::VectorXd getForces() const;
+  Eigen::VectorXd getForces(BVHTree &tree) const;
   void getGravityForce(Eigen::VectorXd &force) const;
   void getBoundaryForce(Eigen::VectorXd &force) const;
-  void getPressureForce(Eigen::VectorXd &force) const;
+  void getPressureForce(Eigen::VectorXd &force, BVHTree &tree) const;
   void getViscosityForce(Eigen::VectorXd &force) const;
 
   ~Simulation();

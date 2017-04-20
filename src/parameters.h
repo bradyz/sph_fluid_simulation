@@ -21,7 +21,7 @@ public:
   double viscocity;                                 // N s / m^3.
   double gas_constant;                              // N m / kg.
 
-  double kernel_support;
+  double kernel_radius;
 
   Parameters() {
     reset();
@@ -29,24 +29,24 @@ public:
 
   void reset() {
     paused = true;
-    time_step = 0.001;
+    time_step = 0.006;
 
     gravity = -9.8;
 
-    coefficient_of_restitution = 1.0;
-    penalty_coefficient = 1e6;
+    coefficient_of_restitution = 0.8;
+    penalty_coefficient = 1e4;
     boundary_min = 0.0;
-    boundary_max = 0.5;
+    boundary_max = 5.0;
 
-    nb_particles = 10;
+    nb_particles = 5;
 
-    radius = 0.01;
+    radius = 0.06;
     mass = 0.012;
     density = 1000.0;
     viscocity = 50.0;
     gas_constant = 20.0;
 
-    kernel_support = 10.0;
+    kernel_radius = 0.045;
   }
 
 };

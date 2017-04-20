@@ -8,13 +8,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(LIBIGL REQUIRED)
 
 if (NOT LIBIGL_FOUND)
-   message(FATAL_ERROR "libigl not found.")
+   message(FATAL_ERROR "LibIGL not found.")
 endif()
 
-option(LIBIGL_WITH_NANOGUI     "Use Nanogui menu"   ON)
-option(LIBIGL_WITH_VIEWER      "Use OpenGL viewer"  ON)
-option(LIBIGL_WITH_OPENGL      "Use OpenGL"         ON)
-option(LIBIGL_WITH_OPENGL_GLFW "Use GLFW"           ON)
+option(LIBIGL_WITH_NANOGUI     ON)
+option(LIBIGL_WITH_VIEWER      ON)
+option(LIBIGL_WITH_OPENGL      ON)
+option(LIBIGL_WITH_OPENGL_GLFW ON)
 
 add_subdirectory("${PROJECT_SOURCE_DIR}/lib/libigl/shared/cmake" "libigl")
 
