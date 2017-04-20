@@ -21,9 +21,9 @@ void Simulation::initialize() {
 
         particle->m = params->mass;
         particle->r = params->radius;
-        particle->c = Vector3d(5.0 * i * particle->r,
-                               5.0 * j * particle->r,
-                               5.0 * k * particle->r);
+        particle->c = Vector3d(3.0 * i * particle->r,
+                               3.0 * j * particle->r,
+                               3.0 * k * particle->r);
         particle->c += Vector3d(2.5, 1.0, 2.5);
         if (j % 2 == 0)
           particle->c += Vector3d(0.5, 0.0, 0.0);
@@ -36,6 +36,12 @@ void Simulation::initialize() {
       }
     }
   }
+
+  BVHTree tree(particles_);
+  updateDensities(tree);
+
+  for (Particle *particle : particles_)
+    particle->rho_0 = particle->rho;
 
   cout << "Total particles: " << particles_.size() << endl;
 }
@@ -82,7 +88,7 @@ void Simulation::step() {
 
   // F = ma.
   for (int i = 0; i < n; i++)
-    particles_[i]->v += h / particles_[i]->m * forces.segment<3>(i * 3);
+    particles_[i]->v += h / particles_[i]->rho * forces.segment<3>(i * 3);
 
   // Update the clock.
   current_time += h;
