@@ -293,18 +293,12 @@ void Simulation::getBoundaryForce(VectorXd &force) const {
   }
 }
 
-unordered_map<const Particle*, int> get_indexes(const vector<Particle*> &particles) {
-    unordered_map<const Particle*, int> particle_to_index;
-    for (int i = 0; i < particles.size(); i++) {
-        particle_to_index[particles[i]] = i;
-    }
-
-    return particle_to_index;
-}
-
 void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
   // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index = get_indexes(particles_);
+  unordered_map<const Particle*, int> particle_to_index;
+  for (int i = 0; i < particles_.size(); i++) {
+    particle_to_index[particles_[i]] = i;
+  }
 
   for (int i = 0 ; i < particles_.size(); i++) {
     Vector3d f_i(0.0, 0.0, 0.0);
@@ -350,7 +344,9 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
 
 void Simulation::getViscosityForce(VectorXd &force, BVHTree &tree) const {
   // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index = get_indexes(particles_);
+  unordered_map<const Particle*, int> particle_to_index;
+  for (int i = 0; i < particles_.size(); i++)
+    particle_to_index[particles_[i]] = i;
 
   for (int i = 0; i < particles_.size(); i++) {
     Vector3d f_i(0.0, 0.0, 0.0);
