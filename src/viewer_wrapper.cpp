@@ -75,6 +75,7 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   viewer.data.set_edges(P, E, EC);
   viewer.data.set_mesh(V, F);
   viewer.data.set_colors(VC);
+  viewer.core.align_camera_center(V, F);
 
   // Signal to render.
   glfwPostEmptyEvent();

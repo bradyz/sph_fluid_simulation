@@ -63,8 +63,8 @@ BVHNode::BVHNode(vector<Particle*> particles) {
   }
 
   sort(particles.begin(), particles.end(),
-       [&](const Particle *lhs, const Particle *rhs) {
-         return lhs->c(axis) - rhs->c(axis);
+       [axis](Particle *lhs, Particle *rhs) {
+         return (lhs->c(axis) < rhs->c(axis));
   });
 
   int split = particles.size() / 2;

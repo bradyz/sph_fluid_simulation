@@ -1,7 +1,7 @@
 #ifndef VIEWER_WRAPPER_H
 #define VIEWER_WRAPPER_H
 
-class Simulation;
+#include "simulation.h"
 
 class ViewerWrapper {
 
