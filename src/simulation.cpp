@@ -91,6 +91,7 @@ void Simulation::initialize() {
         particle->c = Vector3d(2.0 * i * particle->r,
                                2.0 * j * particle->r,
                                2.0 * k * particle->r);
+        particle->c += Vector3d(0.2, 0.2, 0.2);
         particle->v = Vector3d(0.0, 0.0, 0.0);
         particle->k = params->gas_constant;
         particle->rho_0 = 1.0;
@@ -158,6 +159,8 @@ void Simulation::step() {
 
   // Update densities.
   for (int i = 0; i < n; i++) {
+    break;
+
     double rho_i = 0.0;
 
     for (int j = 0; j < n; j++) {
@@ -279,7 +282,7 @@ VectorXd Simulation::getForces() const {
 
   getGravityForce(force);
   getBoundaryForce(force);
-  getPressureForce(force);
+  // getPressureForce(force);
   // getViscosityForce(force);
 
   return force;

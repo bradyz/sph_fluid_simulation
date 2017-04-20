@@ -31,10 +31,10 @@ public:
 class BVHNode {
 
 public:
-  BVHNode(const std::vector<Particle*> &particles);
+  BVHNode(std::vector<Particle*> particles);
   ~BVHNode() {
-    if (left != NULL) delete left;
-    if (right != NULL) delete right;
+    if (left != nullptr) delete left;
+    if (right != nullptr) delete right;
   }
 
   void getCollisions(const Particle *particle, double radius,
