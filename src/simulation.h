@@ -34,14 +34,13 @@ public:
   void getGravityForce(Eigen::VectorXd &force) const;
   void getBoundaryForce(Eigen::VectorXd &force) const;
   void getPressureForce(Eigen::VectorXd &force, BVHTree &tree) const;
-  void getViscosityForce(Eigen::VectorXd &force) const;
+  void getViscosityForce(Eigen::VectorXd &force, BVHTree &tree) const;
 
   ~Simulation();
 
 private:
   std::vector<Mesh*> meshes_;
   std::vector<Particle*> particles_;
-
 };
 
 #endif

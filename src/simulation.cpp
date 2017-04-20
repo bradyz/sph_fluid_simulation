@@ -263,7 +263,7 @@ VectorXd Simulation::getForces(BVHTree &tree) const {
   getGravityForce(force);
   getBoundaryForce(force);
   getPressureForce(force, tree);
-  // getViscosityForce(force);
+  getViscosityForce(force, tree);
 
   return force;
 }
@@ -290,11 +290,18 @@ void Simulation::getBoundaryForce(VectorXd &force) const {
   }
 }
 
+unordered_map<const Particle*, int> get_indexes(const vector<Particle*> &particles) {
+    unordered_map<const Particle*, int> particle_to_index;
+    for (int i = 0; i < particles.size(); i++) {
+        particle_to_index[particles[i]] = i;
+    }
+
+    return particle_to_index;
+}
+
 void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
   // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index;
-  for (int i = 0; i < particles_.size(); i++)
-    particle_to_index[particles_[i]] = i;
+  unordered_map<const Particle*, int> particle_to_index = get_indexes(particles_);
 
   for (int i = 0 ; i < particles_.size(); i++) {
     Vector3d f_i(0.0, 0.0, 0.0);
@@ -338,22 +345,34 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
   }
 }
 
-void Simulation::getViscosityForce(VectorXd &force) const {
+void Simulation::getViscosityForce(VectorXd &force, BVHTree &tree) const {
+  // Reverse mapping.
+  unordered_map<const Particle*, int> particle_to_index = get_indexes(particles_);
+
   for (int i = 0; i < particles_.size(); i++) {
     Vector3d f_i(0.0, 0.0, 0.0);
 
-    for (int j = 0; j < particles_.size(); j++) {
-      double m = particles_[j]->m;
+    vector<Collision> collisions;
+    tree.getCollisions(particles_[i], params->kernel_radius, collisions);
 
-      double mu_i = particles_[i]->mu;
-      double mu_j = particles_[j]->mu;
+    for (Collision &collision : collisions) {
+      int a = particle_to_index[collision.a];
+      int b = particle_to_index[collision.b];
 
-      Vector3d v_i = particles_[i]->v;
-      Vector3d v_j = particles_[j]->v;
+      if (particles_[a] != particles_[i])
+        swap(a, b);
 
-      double rho_j = particles_[j]->rho;
+      double m = particles_[b]->m;
 
-      Vector3d u = particles_[i]->c - particles_[j]->c;
+      double mu_i = particles_[a]->mu;
+      double mu_j = particles_[b]->mu;
+
+      Vector3d v_i = particles_[a]->v;
+      Vector3d v_j = particles_[b]->v;
+
+      double rho_j = particles_[b]->rho;
+
+      Vector3d u = particles_[a]->c - particles_[b]->c;
       double r = u.norm();
       double s = params->kernel_radius;
       double c = r / s;

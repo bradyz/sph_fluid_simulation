@@ -48,7 +48,6 @@ private:
   BVHNode *right;
 
   std::vector<Particle*> items;
-
 };
 
 class BVHTree {
@@ -62,7 +61,6 @@ public:
 
 private:
   BVHNode *root;
-
 };
 
 
