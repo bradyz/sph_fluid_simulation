@@ -4,6 +4,7 @@
 #include <functional>
 
 #include <igl/viewer/Viewer.h>
+#include <igl/jet.h>
 
 using namespace std;
 using namespace Eigen;
@@ -58,17 +59,22 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   // Get the current mesh of the simulation.
   MatrixX3d V;
   MatrixX3i F;
-  sim->render(V, F);
+  VectorXd V_rho;
+  sim->render(V, F, V_rho);
+
+  MatrixX3d VC;
+  igl::jet(V_rho, true, VC);
 
   MatrixX3d P;
   MatrixX2i E;
-  MatrixX3d C;
-  sim->getBounds(P, E, C);
+  MatrixX3d EC;
+  sim->getBounds(P, E, EC);
 
   // Update the viewer.
   viewer.data.clear();
   viewer.data.set_mesh(V, F);
-  viewer.data.set_edges(P, E, C);
+  viewer.data.set_colors(VC);
+  viewer.data.set_edges(P, E, EC);
 
   // Signal to render.
   glfwPostEmptyEvent();

@@ -80,7 +80,7 @@ void Simulation::step() {
   current_time += h;
 }
 
-void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
+void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
   // Find out the total number of vertex and face rows needed.
   int total_v_rows = 0;
   int total_f_rows = 0;
@@ -95,6 +95,8 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
   V.setZero();
   F.resize(total_f_rows, 3);
   F.setZero();
+  C.resize(total_v_rows);
+  C.setZero();
 
   // The current block of vertices and faces.
   int total_v = 0;
@@ -104,6 +106,9 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F) const {
   for (const Particle *particle : particles_) {
     int nb_v = particle->getV().rows();
     int nb_f = particle->getF().rows();
+
+    for (int i = total_v; i < total_v + nb_v; i++)
+      C(i) = particle->rho;
 
     V.block(total_v, 0, nb_v, 3) = particle->getV();
     F.block(total_f, 0, nb_f, 3) = particle->getF().array() + total_v;
@@ -290,10 +295,14 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
       if (particles_[a] != particles_[i])
         swap(a, b);
 
-      double m = particles_[a]->m;
+      if (a == b)
+        continue;
+
+      double m = particles_[b]->m;
 
       double p_i = particles_[a]->getPressure();
       double p_j = particles_[b]->getPressure();
+      double rho_i = particles_[a]->rho;
       double rho_j = particles_[b]->rho;
 
       Vector3d u = particles_[a]->c - particles_[b]->c;
@@ -302,19 +311,19 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
       double c = r / s;
 
       // Gradient of kernel.
-      double dwdr = 1.0 / (M_PI * pow(s, 4));
+      double dwdr = 3.0 / (M_PI * pow(s, 4));
 
       if (0.0 <= c && c <= 1.0)
-        dwdr *= (3.0 * c) * (-1.0 + 3.0 / 4.0 * c);
+        dwdr *= c * (-1.0 + 3.0 / 4.0 * c);
       else if (1.0 <= c && c <= 2.0)
-        dwdr *= (-3.0 / 4.0 * pow(2.0 - c, 2));
+        dwdr *= -1.0 / 4.0 * pow(2.0 - c, 2);
       else
         dwdr *= 0.0;
 
-      f_i += m * (p_i + p_j) / 2.0 / rho_j * dwdr * u;
+      f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dwdr * u.normalized() / s;
     }
 
-    force.segment<3>(i * 3) -= f_i;
+    force.segment<3>(i * 3) += f_i;
   }
 }
 

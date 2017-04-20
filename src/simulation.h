@@ -23,7 +23,7 @@ public:
   void reset();
 
   // Puts the entire simulation into the two matrices (world coordinates).
-  void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F) const;
+  void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F, Eigen::VectorXd &C) const;
   void getBounds(Eigen::MatrixX3d &V, Eigen::MatrixX2i &E,
                  Eigen::MatrixX3d &C) const;
 
