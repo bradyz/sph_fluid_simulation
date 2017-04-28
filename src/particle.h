@@ -24,6 +24,10 @@ public:
 
   double getPressure() const { return k * (rho - rho_0); }
 
+  // density = mass / volume
+  // volume = mass / density
+  double getVolume() const { return m / rho; }
+
   const Eigen::MatrixX3d getV() const {
     return (mesh_->getV() * r).rowwise() + c.transpose();
   }

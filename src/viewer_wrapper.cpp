@@ -3,6 +3,7 @@
 
 #include <functional>
 
+#include <igl/copyleft/marching_cubes.h>
 #include <igl/viewer/Viewer.h>
 #include <igl/jet.h>
 
@@ -56,14 +57,24 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   if (!sim->params->paused)
     sim->step();
 
+  VectorXd samples;
+  MatrixX3d positions;
+  const int res = 30;
+  sim->sampleFluid(samples, positions, res);
+
   // Get the current mesh of the simulation.
   MatrixX3d V;
   MatrixX3i F;
+
+  igl::copyleft::marching_cubes(samples, positions, res, res, res, V, F);
+
+  /*
   VectorXd V_rho;
   sim->render(V, F, V_rho);
 
   MatrixX3d VC;
   igl::jet(V_rho, true, VC);
+  */
 
   MatrixX3d P;
   MatrixX2i E;
@@ -74,8 +85,8 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   viewer.data.clear();
   viewer.data.set_edges(P, E, EC);
   viewer.data.set_mesh(V, F);
-  viewer.data.set_colors(VC);
-  viewer.core.align_camera_center(V, F);
+  // viewer.data.set_colors(VC);
+  // viewer.core.align_camera_center(V, F);
 
   // Signal to render.
   glfwPostEmptyEvent();

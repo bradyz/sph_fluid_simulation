@@ -100,6 +100,43 @@ void Simulation::step() {
   current_time += h;
 }
 
+// Sample the fluid at a single point
+double Simulation::getScore(const Vector3d& q) const {
+  double score = 0.0;
+
+  for (const Particle* particle : particles_) {
+    // radius is the cube root of volume
+    double radius = cbrt(3.0 / 4.0 / M_PI * particle->getVolume() / 64.0);
+    double part_score = radius * radius / (particle->c - q).squaredNorm();
+
+    score += part_score;
+  }
+
+  return - log(score + 1e-3);
+}
+
+// Samples the balls at many points
+void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
+  double b = params->boundary_max;
+  int ptr = 0;
+
+  S.resize(res * res * res);
+  P.resize(res * res * res, 3);
+
+  for (int i = 0; i < res; ++i) {
+    for (int j = 0; j < res; ++j) {
+      for (int k = 0; k < res; ++k) {
+        const double x = b * i / res;
+        const double y = b * j / res;
+        const double z = b * k / res;
+
+        P.row(i + res * (j + res * k)) = RowVector3d(x, y, z);
+        S(i + res * (j + res * k)) = getScore(RowVector3d(x, y, z));
+      }
+    }
+  }
+}
+
 void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
   // Find out the total number of vertex and face rows needed.
   int total_v_rows = 0;

@@ -22,6 +22,10 @@ public:
   void step();
   void reset();
 
+  // Samples the balls at many points
+  double getScore(const Eigen::Vector3d &Q) const;
+  void sampleFluid(Eigen::VectorXd &S, Eigen::MatrixX3d &P, const int& res) const;
+
   // Puts the entire simulation into the two matrices (world coordinates).
   void render(Eigen::MatrixX3d &V, Eigen::MatrixX3i &F, Eigen::VectorXd &C) const;
   void getBounds(Eigen::MatrixX3d &V, Eigen::MatrixX2i &E,
