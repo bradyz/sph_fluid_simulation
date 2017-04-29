@@ -44,6 +44,8 @@ void Simulation::initialize() {
   for (Particle *particle : particles_)
     particle->rho_0 = particle->rho;
 
+  current_time = 0.0;
+
   cout << "Total particles: " << particles_.size() << endl;
 }
 

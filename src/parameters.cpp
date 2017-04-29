@@ -20,4 +20,6 @@ void Parameters::reset() {
   gas_constant = 20.0;
 
   kernel_radius = 0.500;
+
+  show_surface = false;
 }

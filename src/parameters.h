@@ -23,6 +23,8 @@ public:
 
   double kernel_radius;
 
+  bool show_surface;
+
   Parameters() {
     reset();
   }

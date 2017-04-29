@@ -19,6 +19,8 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
     sim->params->paused = !sim->params->paused;
   else if (key == 'R')
     sim->reset();
+  else if (key == 'S')
+    sim->params->show_surface = !sim->params->show_surface;
 
   return false;
 }
@@ -36,15 +38,26 @@ bool init(igl::viewer::Viewer& viewer, Simulation *sim) {
   viewer.ngui->addVariable("Gravity",             sim->params->gravity);
   viewer.ngui->addVariable("Time Step",           sim->params->time_step);
   viewer.ngui->addVariable("Current Time",        sim->current_time, false);
-  viewer.ngui->addButton("Reset Parameters",
-                         [sim](){ sim->params->reset(); });
 
-  // Simulation controls..
+  viewer.ngui->addButton("Show surface",
+                         [sim](){
+                           sim->params->show_surface = !sim->params->show_surface;
+                         });
+  viewer.ngui->addButton("Reset Parameters",
+                         [sim](){
+                           sim->params->reset();
+                         });
+
+  // Simulation controls.
   viewer.ngui->addGroup("Simulation Controls");
   viewer.ngui->addButton("Toggle Simulation",
-                         [sim](){ sim->params->paused = !sim->params->paused; });
+                         [sim](){
+                           sim->params->paused = !sim->params->paused;
+                         });
   viewer.ngui->addButton("Reset Simulation",
-                         [sim](){ sim->reset(); });
+                         [sim](){
+                           sim->reset();
+                         });
 
   // Generate widgets.
   viewer.screen->performLayout();
@@ -57,24 +70,26 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   if (!sim->params->paused)
     sim->step();
 
-  VectorXd samples;
-  MatrixX3d positions;
-  const int res = 30;
-  sim->sampleFluid(samples, positions, res);
-
   // Get the current mesh of the simulation.
   MatrixX3d V;
   MatrixX3i F;
+  MatrixX3d C;
 
-  igl::copyleft::marching_cubes(samples, positions, res, res, res, V, F);
+  if (sim->params->show_surface) {
+    VectorXd samples;
+    MatrixX3d positions;
+    const int res = 30;
 
-  /*
-  VectorXd V_rho;
-  sim->render(V, F, V_rho);
+    sim->sampleFluid(samples, positions, res);
 
-  MatrixX3d VC;
-  igl::jet(V_rho, true, VC);
-  */
+    igl::copyleft::marching_cubes(samples, positions, res, res, res, V, F);
+  }
+  else {
+    VectorXd V_rho;
+    sim->render(V, F, V_rho);
+
+    igl::jet(V_rho, true, C);
+  }
 
   MatrixX3d P;
   MatrixX2i E;
@@ -85,8 +100,12 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   viewer.data.clear();
   viewer.data.set_edges(P, E, EC);
   viewer.data.set_mesh(V, F);
-  // viewer.data.set_colors(VC);
-  // viewer.core.align_camera_center(V, F);
+
+  if (!sim->params->show_surface)
+    viewer.data.set_colors(C);
+
+  if (sim->current_time == 0.0)
+    viewer.core.align_camera_center(V, F);
 
   // Signal to render.
   glfwPostEmptyEvent();
