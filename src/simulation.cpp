@@ -37,12 +37,11 @@ void Simulation::initialize() {
     }
   }
 
-  // Original positions calculate rest density.
-  BVHTree tree(particles_);
-  updateDensities(tree);
+  bvh_tree_ = new BVHTree(particles_);
 
-  for (Particle *particle : particles_)
-    particle->rho_0 = particle->rho;
+  // Reverse mapping.
+  for (int i = 0; i < particles_.size(); i++)
+    particle_to_index_[particles_[i]] = i;
 
   current_time = 0.0;
 
@@ -70,6 +69,7 @@ void Simulation::step() {
   int n = particles_.size();
   double h = params->time_step;
 
+  // Precondition check.
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < 3; j++) {
       if (isnan(particles_[i]->c(j)) || isnan(particles_[i]->v(j))) {
@@ -85,14 +85,17 @@ void Simulation::step() {
   for (int i = 0; i < n; i++)
     particles_[i]->c += h * particles_[i]->v;
 
-  // Build BVH Tree.
-  BVHTree tree(particles_);
+  // Clean up previous timestep tree.
+  if (bvh_tree_ != nullptr)
+    delete bvh_tree_;
 
-  updateDensities(tree);
-  applyImpulses(tree);
+  bvh_tree_ = new BVHTree(particles_);
+
+  updateDensities();
+  applyImpulses();
 
   // F = -dV'.
-  VectorXd forces = getForces(tree);
+  VectorXd forces = getForces();
 
   // F = ma.
   for (int i = 0; i < n; i++)
@@ -106,10 +109,14 @@ void Simulation::step() {
 double Simulation::getScore(const Vector3d& q) const {
   double score = 0.0;
 
-  for (const Particle* particle : particles_) {
-    // radius is the cube root of volume
-    double radius = cbrt(3.0 / 4.0 / M_PI * particle->getVolume() / 64.0);
-    double part_score = radius * radius / (particle->c - q).squaredNorm();
+  vector<Collision> collisions;
+  bvh_tree_->getCollisions(q, params->kernel_radius, collisions);
+
+  for (Collision &collision : collisions) {
+    int b = particle_to_index_.at(collision.hit);
+
+    double radius = cbrt(3.0 / 4.0 / M_PI * particles_[b]->getVolume() / 64.0);
+    double part_score = radius * radius / (particles_[b]->c - q).squaredNorm();
 
     score += part_score;
   }
@@ -120,7 +127,6 @@ double Simulation::getScore(const Vector3d& q) const {
 // Samples the balls at many points
 void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
   double b = params->boundary_max;
-  int ptr = 0;
 
   S.resize(res * res * res);
   P.resize(res * res * res, 3);
@@ -210,33 +216,30 @@ void Simulation::getBounds(MatrixX3d &V, MatrixX2i &E, MatrixX3d &C) const {
   C.rowwise() = RowVector3d(1.0, 0.5, 0.5);
 }
 
-void Simulation::applyImpulses(BVHTree &tree) {
-  // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index;
-  for (int i = 0; i < particles_.size(); i++)
-    particle_to_index[particles_[i]] = i;
+void Simulation::applyImpulses() {
+  int n = particles_.size();
 
   // Collisions resolved.
-  set<Collision> visited;
+  unordered_map<int, unordered_map<int, bool> > visited;
 
-  for (const Particle *particle : particles_) {
+  for (int a = 0; a < n; a++) {
+    const Particle *particle = particles_[a];
+
     vector<Collision> collisions;
-    tree.getCollisions(particle, particle->r, collisions);
+    bvh_tree_->getCollisions(particle->c, particle->r, collisions);
 
     for (Collision &collision : collisions) {
-      // Have resolved collision before.
-      if (visited.find(collision) != visited.end())
+      int b = particle_to_index_.at(collision.hit);
+
+      // Ignore self collision and previously resolved collisions.
+      if (a == b)
+        continue;
+      else if (visited[a][b])
         continue;
 
       // Mark collision as resolved.
-      visited.insert(collision);
-
-      int a = particle_to_index[collision.a];
-      int b = particle_to_index[collision.b];
-
-      // Ignore self collision.
-      if (a == b)
-        continue;
+      visited[a][b] = true;
+      visited[b][a] = true;
 
       // Vector from b to a.
       Vector3d n_hat = (particles_[a]->c - particles_[b]->c).normalized();
@@ -260,21 +263,15 @@ void Simulation::applyImpulses(BVHTree &tree) {
   }
 }
 
-void Simulation::updateDensities(BVHTree &tree) {
-  // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index;
-  for (int i = 0; i < particles_.size(); i++)
-    particle_to_index[particles_[i]] = i;
-
-  for (int i = 0 ; i < particles_.size(); i++) {
+void Simulation::updateDensities() {
+  for (int a = 0; a < particles_.size(); a++) {
     double rho_i = 0.0;
 
     vector<Collision> collisions;
-    tree.getCollisions(particles_[i], params->kernel_radius, collisions);
+    bvh_tree_->getCollisions(particles_[a]->c, params->kernel_radius, collisions);
 
     for (Collision &collision : collisions) {
-      int a = particle_to_index[collision.a];
-      int b = particle_to_index[collision.b];
+      int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
       double r = (particles_[a]->c - particles_[b]->c).norm();
@@ -293,19 +290,19 @@ void Simulation::updateDensities(BVHTree &tree) {
       rho_i += m * w;
     }
 
-    particles_[i]->rho = rho_i;
+    particles_[a]->rho = rho_i;
   }
 }
 
-VectorXd Simulation::getForces(BVHTree &tree) const {
+VectorXd Simulation::getForces() const {
   // Accumulation of different forces.
   VectorXd force(particles_.size() * 3);
   force.setZero();
 
   getGravityForce(force);
   getBoundaryForce(force);
-  getPressureForce(force, tree);
-  getViscosityForce(force, tree);
+  getPressureForce(force);
+  getViscosityForce(force);
 
   return force;
 }
@@ -332,25 +329,15 @@ void Simulation::getBoundaryForce(VectorXd &force) const {
   }
 }
 
-void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
-  // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index;
-  for (int i = 0; i < particles_.size(); i++) {
-    particle_to_index[particles_[i]] = i;
-  }
-
-  for (int i = 0 ; i < particles_.size(); i++) {
+void Simulation::getPressureForce(VectorXd &force) const {
+  for (int a = 0 ; a < particles_.size(); a++) {
     Vector3d f_i(0.0, 0.0, 0.0);
 
     vector<Collision> collisions;
-    tree.getCollisions(particles_[i], params->kernel_radius, collisions);
+    bvh_tree_->getCollisions(particles_[a]->c, params->kernel_radius, collisions);
 
     for (Collision &collision : collisions) {
-      int a = particle_to_index[collision.a];
-      int b = particle_to_index[collision.b];
-
-      if (particles_[a] != particles_[i])
-        swap(a, b);
+      int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
 
@@ -377,28 +364,19 @@ void Simulation::getPressureForce(VectorXd &force, BVHTree &tree) const {
       f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dwdr * u;
     }
 
-    force.segment<3>(i * 3) += f_i;
+    force.segment<3>(a * 3) += f_i;
   }
 }
 
-void Simulation::getViscosityForce(VectorXd &force, BVHTree &tree) const {
-  // Reverse mapping.
-  unordered_map<const Particle*, int> particle_to_index;
-  for (int i = 0; i < particles_.size(); i++)
-    particle_to_index[particles_[i]] = i;
-
-  for (int i = 0; i < particles_.size(); i++) {
+void Simulation::getViscosityForce(VectorXd &force) const {
+  for (int a = 0; a < particles_.size(); a++) {
     Vector3d f_i(0.0, 0.0, 0.0);
 
     vector<Collision> collisions;
-    tree.getCollisions(particles_[i], params->kernel_radius, collisions);
+    bvh_tree_->getCollisions(particles_[a]->c, params->kernel_radius, collisions);
 
     for (Collision &collision : collisions) {
-      int a = particle_to_index[collision.a];
-      int b = particle_to_index[collision.b];
-
-      if (particles_[a] != particles_[i])
-        swap(a, b);
+      int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
 
@@ -427,12 +405,14 @@ void Simulation::getViscosityForce(VectorXd &force, BVHTree &tree) const {
       f_i += (mu_i + mu_j) / 2.0 * m * (v_j - v_i) / rho_j * dw2dr;
     }
 
-    force.segment<3>(i * 3) += f_i;
+    force.segment<3>(a * 3) += f_i;
   }
 }
 
 Simulation::~Simulation() {
   delete params;
+
+  delete bvh_tree_;
 
   for (Particle *particle : particles_)
     delete particle;

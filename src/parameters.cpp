@@ -15,7 +15,7 @@ void Parameters::reset() {
 
   radius = 0.06;
   mass = 0.112;
-  density = 1.0;
+  density = 10.0;
   viscocity = 1.0;
   gas_constant = 20.0;
 

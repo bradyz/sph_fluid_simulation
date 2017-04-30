@@ -82,20 +82,20 @@ BVHNode::BVHNode(vector<Particle*> particles) {
   right = new BVHNode(right_particles);
 }
 
-void BVHNode::getCollisions(const Particle *lhs, double radius,
+void BVHNode::getCollisions(const Vector3d &query, double radius,
                             vector<Collision> &collisions) const {
-  if (!sphereCubeIntersect(lower, upper, lhs->c, radius))
+  if (!sphereCubeIntersect(lower, upper, query, radius))
     return;
 
   if (left == nullptr && right == nullptr) {
-    for (const Particle *rhs : items) {
-      if (sphereSphereIntersect(lhs->c, radius, rhs->c, rhs->r))
-        collisions.push_back(Collision(lhs, rhs));
+    for (const Particle *particle : items) {
+      if (sphereSphereIntersect(query, radius, particle->c, particle->r))
+        collisions.push_back(Collision(particle));
     }
   }
   else {
-    left->getCollisions(lhs, radius, collisions);
-    right->getCollisions(lhs, radius, collisions);
+    left->getCollisions(query, radius, collisions);
+    right->getCollisions(query, radius, collisions);
   }
 }
 
@@ -103,7 +103,7 @@ BVHTree::BVHTree(const vector<Particle*> &particles) {
   root = new BVHNode(particles);
 }
 
-void BVHTree::getCollisions(const Particle *particle, double radius,
+void BVHTree::getCollisions(const Vector3d &query, double radius,
                             vector<Collision> &collisions) const {
-  root->getCollisions(particle, radius, collisions);
+  root->getCollisions(query, radius, collisions);
 }

@@ -7,6 +7,7 @@
 #include "collision.h"
 
 #include <vector>
+#include <unordered_map>
 
 #include <Eigen/Core>
 
@@ -31,20 +32,24 @@ public:
   void getBounds(Eigen::MatrixX3d &V, Eigen::MatrixX2i &E,
                  Eigen::MatrixX3d &C) const;
 
-  void applyImpulses(BVHTree &tree);
-  void updateDensities(BVHTree &tree);
+  void applyImpulses();
+  void updateDensities();
 
-  Eigen::VectorXd getForces(BVHTree &tree) const;
+  Eigen::VectorXd getForces() const;
   void getGravityForce(Eigen::VectorXd &force) const;
   void getBoundaryForce(Eigen::VectorXd &force) const;
-  void getPressureForce(Eigen::VectorXd &force, BVHTree &tree) const;
-  void getViscosityForce(Eigen::VectorXd &force, BVHTree &tree) const;
+  void getPressureForce(Eigen::VectorXd &force) const;
+  void getViscosityForce(Eigen::VectorXd &force) const;
 
   ~Simulation();
 
 private:
   std::vector<Mesh*> meshes_;
   std::vector<Particle*> particles_;
+
+  BVHTree *bvh_tree_;
+  std::unordered_map<const Particle*, int> particle_to_index_;
+
 };
 
 #endif

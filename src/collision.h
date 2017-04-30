@@ -10,20 +10,10 @@
 class Collision {
 
 public:
-  const Particle *a;
-  const Particle *b;
+  const Particle *hit;
 
-  Collision(const Particle *x, const Particle *y) {
-    a = (x > y) ? x : y;
-    b = (x > y) ? y : x;
-  }
-
-  bool operator<(const Collision &rhs) const {
-    if (a < rhs.a)
-      return true;
-    else if (a > rhs.a)
-      return false;
-    return (b < rhs.b);
+  Collision(const Particle *particle) {
+    hit = particle;
   }
 
 };
@@ -37,7 +27,7 @@ public:
     if (right != nullptr) delete right;
   }
 
-  void getCollisions(const Particle *particle, double radius,
+  void getCollisions(const Eigen::Vector3d &query, double radius,
                      std::vector<Collision> &collisions) const;
 
 private:
@@ -56,7 +46,7 @@ public:
   BVHTree(const std::vector<Particle*> &particles);
   ~BVHTree() { delete root; }
 
-  void getCollisions(const Particle *particle, double radius,
+  void getCollisions(const Eigen::Vector3d &query, double radius,
                      std::vector<Collision> &collisions) const;
 
 private:
