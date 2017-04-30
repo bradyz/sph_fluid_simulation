@@ -24,6 +24,8 @@ public:
   double kernel_radius;
 
   bool show_surface;
+  double surface;
+  int resolution;
 
   Parameters() {
     reset();

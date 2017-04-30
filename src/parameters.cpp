@@ -1,8 +1,10 @@
 #include "parameters.h"
 
+#include <cmath>
+
 void Parameters::reset() {
   paused = true;
-  time_step = 0.01;
+  time_step = 0.05;
 
   gravity = -9.8;
 
@@ -11,15 +13,17 @@ void Parameters::reset() {
   boundary_min = 0.0;
   boundary_max = 5.0;
 
-  nb_particles = 5;
+  nb_particles = 7;
 
   radius = 0.06;
   mass = 0.112;
   density = 10.0;
-  viscocity = 1.0;
+  viscocity = 0.5;
   gas_constant = 20.0;
 
   kernel_radius = 0.500;
 
   show_surface = false;
+  surface = 3.0 / 4.0 / M_PI / 32.0;
+  resolution = 30;
 }

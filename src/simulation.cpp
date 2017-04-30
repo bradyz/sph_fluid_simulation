@@ -5,6 +5,8 @@
 #include <set>
 #include <unordered_map>
 
+#include <igl/copyleft/marching_cubes.h>
+
 using namespace std;
 using namespace Eigen;
 
@@ -24,7 +26,7 @@ void Simulation::initialize() {
         particle->c = Vector3d(3.0 * i * particle->r,
                                3.0 * j * particle->r,
                                3.0 * k * particle->r);
-        particle->c += Vector3d(2.0, 1.5, 2.0);
+        particle->c += Vector3d(2.0, 2.5, 2.0);
 
         particle->v = Vector3d(0.0, 0.0, 0.0);
         particle->k = params->gas_constant;
@@ -115,13 +117,13 @@ double Simulation::getScore(const Vector3d& q) const {
   for (Collision &collision : collisions) {
     int b = particle_to_index_.at(collision.hit);
 
-    double radius = cbrt(3.0 / 4.0 / M_PI * particles_[b]->getVolume() / 64.0);
+    double radius = cbrt(params->surface * particles_[b]->getVolume());
     double part_score = radius * radius / (particles_[b]->c - q).squaredNorm();
 
     score += part_score;
   }
 
-  return - log(score + 1e-3);
+  return -log(score + 1e-3);
 }
 
 // Samples the balls at many points
@@ -146,6 +148,20 @@ void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
 }
 
 void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
+  if (params->show_surface) {
+    C.resize(0);
+
+    VectorXd samples;
+    MatrixX3d positions;
+    int res = params->resolution;
+
+    sampleFluid(samples, positions, res);
+
+    igl::copyleft::marching_cubes(samples, positions, res, res, res, V, F);
+
+    return;
+  }
+
   // Find out the total number of vertex and face rows needed.
   int total_v_rows = 0;
   int total_f_rows = 0;

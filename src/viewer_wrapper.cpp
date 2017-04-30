@@ -3,9 +3,12 @@
 
 #include <functional>
 
-#include <igl/copyleft/marching_cubes.h>
 #include <igl/viewer/Viewer.h>
 #include <igl/jet.h>
+
+#include <nanogui/textbox.h>
+#include <nanogui/slider.h>
+#include <nanogui/window.h>
 
 using namespace std;
 using namespace Eigen;
@@ -25,42 +28,60 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
   return false;
 }
 
+nanogui::TextBox *makeSlider(double &property, nanogui::Window *panel) {
+  nanogui::TextBox *textbox = new nanogui::TextBox(panel);
+  textbox->setFixedSize(Vector2i(60, 25));
+  textbox->setValue(to_string(property));
+
+  nanogui::Slider *slider = new nanogui::Slider(textbox);
+  slider->setValue(property);
+  slider->setFixedWidth(80);
+  slider->setCallback([&property, textbox](float value) {
+      property = value;
+      textbox->setValue(to_string(value));
+  });
+
+  return textbox;
+}
+
 bool init(igl::viewer::Viewer& viewer, Simulation *sim) {
-  viewer.ngui->addWindow(Vector2i(220, 10), "SPH Fluid Simulation");
+  Parameters *params = sim->params;
+
+  nanogui::Window *panel = viewer.ngui->addWindow(Vector2i(220, 20),
+                                                   "SPH Fluid Simulation");
 
   // Simulation environment variables.
   viewer.ngui->addGroup("Simulation Parameters");
-  viewer.ngui->addVariable("Number of Particles", sim->params->nb_particles);
-  viewer.ngui->addVariable("Radius",              sim->params->radius);
-  viewer.ngui->addVariable("Mass",                sim->params->mass);
-  viewer.ngui->addVariable("Density",             sim->params->density);
-  viewer.ngui->addVariable("Viscocity",           sim->params->viscocity);
-  viewer.ngui->addVariable("Gravity",             sim->params->gravity);
-  viewer.ngui->addVariable("Time Step",           sim->params->time_step);
-  viewer.ngui->addVariable("Current Time",        sim->current_time, false);
+  viewer.ngui->addVariable("Number of Particles", params->nb_particles);
+  viewer.ngui->addVariable("Radius",              params->radius);
+  viewer.ngui->addVariable("Mass",                params->mass);
+  viewer.ngui->addVariable("Density",             params->density);
+  viewer.ngui->addVariable("Viscocity",           params->viscocity);
+  viewer.ngui->addVariable("Gravity",             params->gravity);
+  viewer.ngui->addVariable("Time Step",           params->time_step);
 
-  viewer.ngui->addButton("Show surface",
-                         [sim](){
-                           sim->params->show_surface = !sim->params->show_surface;
-                         });
+  viewer.ngui->addWidget("Kernel Size", makeSlider(params->kernel_radius, panel));
   viewer.ngui->addButton("Reset Parameters",
-                         [sim](){
-                           sim->params->reset();
-                         });
+                         [params](){ params->reset(); });
+
+  // Marching cubes stuff.
+  viewer.ngui->addGroup("Surface Rendering");
+  viewer.ngui->addVariable("Grid Resolution", params->resolution);
+  viewer.ngui->addWidget("Offset", makeSlider(params->surface, panel));
+  viewer.ngui->addButton("Show surface",
+                         [params](){ params->show_surface ^= true; });
 
   // Simulation controls.
   viewer.ngui->addGroup("Simulation Controls");
   viewer.ngui->addButton("Toggle Simulation",
-                         [sim](){
-                           sim->params->paused = !sim->params->paused;
-                         });
+                         [params](){ params->paused ^= true; });
   viewer.ngui->addButton("Reset Simulation",
-                         [sim](){
-                           sim->reset();
-                         });
+                         [sim](){ sim->reset(); });
 
   // Generate widgets.
   viewer.screen->performLayout();
+
+  viewer.core.show_lines = false;
 
   return false;
 }
@@ -73,23 +94,10 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   // Get the current mesh of the simulation.
   MatrixX3d V;
   MatrixX3i F;
-  MatrixX3d C;
+  VectorXd C;
 
-  if (sim->params->show_surface) {
-    VectorXd samples;
-    MatrixX3d positions;
-    const int res = 30;
-
-    sim->sampleFluid(samples, positions, res);
-
-    igl::copyleft::marching_cubes(samples, positions, res, res, res, V, F);
-  }
-  else {
-    VectorXd V_rho;
-    sim->render(V, F, V_rho);
-
-    igl::jet(V_rho, true, C);
-  }
+  // C will have 0 rows if using marching cubes.
+  sim->render(V, F, C);
 
   MatrixX3d P;
   MatrixX2i E;
@@ -101,8 +109,12 @@ bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
   viewer.data.set_edges(P, E, EC);
   viewer.data.set_mesh(V, F);
 
-  if (!sim->params->show_surface)
-    viewer.data.set_colors(C);
+  if (C.rows() > 0) {
+    MatrixX3d C_jet;
+    igl::jet(C, true, C_jet);
+
+    viewer.data.set_colors(C_jet);
+  }
 
   if (sim->current_time == 0.0)
     viewer.core.align_camera_center(V, F);
