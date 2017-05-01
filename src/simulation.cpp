@@ -1,44 +1,74 @@
 #include "simulation.h"
 #include "parameters.h"
 #include "collision.h"
+#include "scenes.h"
 
 #include <set>
 #include <unordered_map>
 
+#include <Eigen/Core>
 #include <igl/copyleft/marching_cubes.h>
 
 using namespace std;
 using namespace Eigen;
 
+// anonymous namespace for math.
+namespace {
+
+double kernel(const Vector3d &x, const Vector3d &x_i, double s) {
+  double r = (x - x_i).norm();
+  double c = r / s;
+
+  double w = 1.0 / (M_PI * pow(s, 3));
+
+  if (0.0 <= c && c <= 1.0)
+    w *= 1.0 - 3.0 / 2.0 * pow(c, 2) + 3.0 / 4.0 * pow(c, 3);
+  else if (1.0 <= c && c <= 2.0)
+    w *= 1.0 / 4.0 * pow(2.0 - c, 3);
+  else
+    w *= 0.0;
+
+  return w;
+}
+
+Vector3d kernelGradient(const Vector3d &x, const Vector3d &x_i, double s) {
+  double r = (x - x_i).norm();
+  double c = r / s;
+
+  double dwdr = 3.0 / (M_PI * pow(s, 4));
+
+  if (0.0 <= c && c <= 1.0)
+    dwdr *= c * (-1.0 + 3.0 / 4.0 * c);
+  else if (1.0 <= c && c <= 2.0)
+    dwdr *= -1.0 / 4.0 * pow(2.0 - c, 2);
+  else
+    dwdr *= 0.0;
+
+  return dwdr * (x - x_i);
+}
+
+double kernelLaplacian(const Vector3d &x, const Vector3d &x_i, double s) {
+  double r = (x - x_i).norm();
+  double c = r / s;
+
+  double dw2dr = 1.0 / (M_PI * pow(s, 5));
+
+  if (0.0 <= c && c <= 1.0)
+    dw2dr *= 3.0 * (-1.0 + 3.0 / 2.0 * c);
+  else if (1.0 <= c && c <= 2.0)
+    dw2dr *= 3.0 / 2.0 * (2.0 - c);
+  else
+    dw2dr *= 0.0;
+
+  return dw2dr;
+}
+
+} // end anonymous namespace for math.
+
 void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
 
-  // The sphere mesh has a radius of 0.1.
-  meshes_.push_back(new Mesh("../obj/sphere.obj", 10.0));
-
-  for (int i = 0; i < params->nb_particles; i++) {
-    for (int j = 0; j < params->nb_particles; j++) {
-      for (int k = 0; k < params->nb_particles; k++) {
-        Particle *particle = new Particle(meshes_.front());
-
-        particle->m = params->mass;
-        particle->r = params->radius;
-        particle->c = Vector3d(3.0 * i * particle->r,
-                               3.0 * j * particle->r,
-                               3.0 * k * particle->r);
-        particle->c += Vector3d(2.0, 2.5, 2.0);
-
-        particle->v = Vector3d(0.0, 0.0, 0.0);
-        particle->k = params->gas_constant;
-        particle->rho_0 = params->density;
-        particle->rho = params->density;
-        particle->mu = params->viscocity;
-
-        particles_.push_back(particle);
-      }
-    }
-  }
-
+  particles_ = Scenes::dropOnPlane(params);
   bvh_tree_ = new BVHTree(particles_);
 
   // Reverse mapping.
@@ -53,15 +83,13 @@ void Simulation::initialize() {
 void Simulation::reset() {
   cout << "Resetting simulation." << endl;
 
-  // Clean up memory.
+  delete bvh_tree_;
+
   for (Particle *particle : particles_)
     delete particle;
-  for (Mesh *mesh : meshes_)
-    delete mesh;
 
   // Reset the containers.
   particles_.clear();
-  meshes_.clear();
 
   // Reinitialize.
   initialize();
@@ -117,13 +145,13 @@ double Simulation::getScore(const Vector3d& q) const {
   for (Collision &collision : collisions) {
     int b = particle_to_index_.at(collision.hit);
 
-    double radius = cbrt(params->surface * particles_[b]->getVolume());
-    double part_score = radius * radius / (particles_[b]->c - q).squaredNorm();
+    double v = particles_[b]->getVolume();
+    double w = kernel(q, particles_[b]->c, params->kernel_radius);
 
-    score += part_score;
+    score += v * w;
   }
 
-  return -log(score + 1e-3);
+  return params->surface - score;
 }
 
 // Samples the balls at many points
@@ -290,18 +318,7 @@ void Simulation::updateDensities() {
       int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
-      double r = (particles_[a]->c - particles_[b]->c).norm();
-      double s = params->kernel_radius;
-      double c = r / s;
-
-      double w = 1.0 / (M_PI * pow(s, 3));
-
-      if (0.0 <= c && c <= 1.0)
-        w *= 1.0 - 3.0 / 2.0 * pow(c, 2) + 3.0 / 4.0 * pow(c, 3);
-      else if (1.0 <= c && c <= 2.0)
-        w *= 1.0 / 4.0 * pow(2.0 - c, 3);
-      else
-        w *= 0.0;
+      double w = kernel(particles_[a]->c, particles_[b]->c, params->kernel_radius);
 
       rho_i += m * w;
     }
@@ -362,22 +379,10 @@ void Simulation::getPressureForce(VectorXd &force) const {
       double rho_i = particles_[a]->rho;
       double rho_j = particles_[b]->rho;
 
-      Vector3d u = particles_[a]->c - particles_[b]->c;
-      double r = u.norm();
-      double s = params->kernel_radius;
-      double c = r / s;
+      Vector3d dw = kernelGradient(particles_[a]->c, particles_[b]->c,
+                                   params->kernel_radius);
 
-      // Gradient of kernel.
-      double dwdr = 3.0 / (M_PI * pow(s, 4));
-
-      if (0.0 <= c && c <= 1.0)
-        dwdr *= c * (-1.0 + 3.0 / 4.0 * c);
-      else if (1.0 <= c && c <= 2.0)
-        dwdr *= -1.0 / 4.0 * pow(2.0 - c, 2);
-      else
-        dwdr *= 0.0;
-
-      f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dwdr * u;
+      f_i += -m * (p_i + p_j) / (2.0 * rho_i * rho_j) * dw;
     }
 
     force.segment<3>(a * 3) += f_i;
@@ -403,20 +408,8 @@ void Simulation::getViscosityForce(VectorXd &force) const {
       Vector3d v_j = particles_[b]->v;
 
       double rho_j = particles_[b]->rho;
-
-      Vector3d u = particles_[a]->c - particles_[b]->c;
-      double r = u.norm();
-      double s = params->kernel_radius;
-      double c = r / s;
-
-      double dw2dr = 1.0 / (M_PI * pow(s, 5));
-
-      if (0.0 <= c && c <= 1.0)
-        dw2dr *= 3.0 * (-1.0 + 3.0 / 2.0 * c);
-      else if (1.0 <= c && c <= 2.0)
-        dw2dr *= 3.0 / 2.0 * (2.0 - c);
-      else
-        dw2dr *= 0.0;
+      double dw2dr = kernelLaplacian(particles_[a]->c, particles_[b]->c,
+                                     params->kernel_radius);
 
       f_i += (mu_i + mu_j) / 2.0 * m * (v_j - v_i) / rho_j * dw2dr;
     }
@@ -427,11 +420,8 @@ void Simulation::getViscosityForce(VectorXd &force) const {
 
 Simulation::~Simulation() {
   delete params;
-
   delete bvh_tree_;
 
   for (Particle *particle : particles_)
     delete particle;
-  for (Mesh *mesh : meshes_)
-    delete mesh;
 }

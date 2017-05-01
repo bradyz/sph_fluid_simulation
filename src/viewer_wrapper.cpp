@@ -30,12 +30,10 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
 
 nanogui::TextBox *makeSlider(double &property, nanogui::Window *panel) {
   nanogui::TextBox *textbox = new nanogui::TextBox(panel);
-  textbox->setFixedSize(Vector2i(60, 25));
   textbox->setValue(to_string(property));
 
   nanogui::Slider *slider = new nanogui::Slider(textbox);
   slider->setValue(property);
-  slider->setFixedWidth(80);
   slider->setCallback([&property, textbox](float value) {
       property = value;
       textbox->setValue(to_string(value));

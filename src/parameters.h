@@ -1,6 +1,8 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
+#include "mesh.h"
+
 class Parameters {
 
 public:
@@ -27,11 +29,16 @@ public:
   double surface;
   int resolution;
 
+  Mesh *sphere_mesh;
+
   Parameters() {
+    sphere_mesh = new Mesh("../obj/sphere.obj", 10.0);
     reset();
   }
 
   void reset();
+
+  ~Parameters() { delete sphere_mesh; }
 
 };
 

@@ -1,7 +1,6 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include "mesh.h"
 #include "parameters.h"
 #include "particle.h"
 #include "collision.h"
@@ -44,7 +43,6 @@ public:
   ~Simulation();
 
 private:
-  std::vector<Mesh*> meshes_;
   std::vector<Particle*> particles_;
 
   BVHTree *bvh_tree_;

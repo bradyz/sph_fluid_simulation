@@ -24,6 +24,6 @@ void Parameters::reset() {
   kernel_radius = 0.500;
 
   show_surface = false;
-  surface = 3.0 / 4.0 / M_PI / 32.0;
+  surface = 1.0;
   resolution = 30;
 }
