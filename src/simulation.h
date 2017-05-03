@@ -4,6 +4,7 @@
 #include "parameters.h"
 #include "particle.h"
 #include "collision.h"
+#include "bounding_box.h"
 
 #include <vector>
 #include <unordered_map>
@@ -44,6 +45,7 @@ public:
 
 private:
   std::vector<Particle*> particles_;
+  std::vector<BoundingBox*> bounds_;
 
   BVHTree *bvh_;
   std::unordered_map<const Particle*, int> particle_to_index_;

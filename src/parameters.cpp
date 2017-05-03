@@ -19,7 +19,7 @@ void Parameters::reset() {
   viscocity = 0.5;
   gas_constant = 20.0;
 
-  kernel_radius = 0.500;
+  kernel_radius = 0.25;
 
   view_mode = ViewMode::DENSITY;
 

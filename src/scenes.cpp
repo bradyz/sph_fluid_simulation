@@ -1,6 +1,7 @@
 #include "scenes.h"
 #include "parameters.h"
 #include "particle.h"
+#include "bounding_box.h"
 
 #include <vector>
 
@@ -9,8 +10,11 @@
 using namespace std;
 using namespace Eigen;
 
-vector<Particle*> Scenes::dropOnPlane(Parameters *params) {
-  vector<Particle*> particles;
+void Scenes::dropOnPlane(Parameters *params,
+                         vector<Particle*> &particles,
+                         vector<BoundingBox*> &bounds) {
+  particles.clear();
+  bounds.clear();
 
   for (int i = 0; i < params->nb_particles; i++) {
     for (int j = 0; j < params->nb_particles; j++) {
@@ -22,7 +26,6 @@ vector<Particle*> Scenes::dropOnPlane(Parameters *params) {
         particle->c = Vector3d(3.0 * i * particle->r,
                                3.0 * j * particle->r,
                                3.0 * k * particle->r);
-        particle->c += Vector3d(2.0, 2.5, 2.0);
 
         particle->v = Vector3d(0.0, 0.0, 0.0);
         particle->k = params->gas_constant;
@@ -35,5 +38,8 @@ vector<Particle*> Scenes::dropOnPlane(Parameters *params) {
     }
   }
 
-  return particles;
+  BoundingBox *box;
+
+  box = new BoundingBox(Vector3d(-4.0, -0.5, -4.0), Vector3d(4.0, 0.0, 4.0));
+  bounds.push_back(box);
 }

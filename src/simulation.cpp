@@ -68,7 +68,7 @@ double kernelLaplacian(const Vector3d &x, const Vector3d &x_i, double s) {
 void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
 
-  particles_ = Scenes::dropOnPlane(params);
+  Scenes::dropOnPlane(params, particles_, bounds_);
   bvh_ = new BVHTree(particles_);
 
   // Reverse mapping.
@@ -88,8 +88,12 @@ void Simulation::reset() {
   for (Particle *particle : particles_)
     delete particle;
 
+  for (BoundingBox *box : bounds_)
+    delete box;
+
   // Reset the containers.
   particles_.clear();
+  bounds_.clear();
 
   // Reinitialize.
   initialize();
@@ -233,35 +237,39 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
 }
 
 void Simulation::getBounds(MatrixX3d &V, MatrixX2i &E, MatrixX3d &C) const {
-  double b = params->boundary_max;
+  // Find out the total number of vertex and edge rows needed.
+  int total_v_rows = 0;
+  int total_e_rows = 0;
 
-  V.resize(8, 3);
-  E.resize(12, 2);
-  C.resize(12, 3);
+  for (const BoundingBox *box : bounds_) {
+    total_v_rows += box->getV().rows();
+    total_e_rows += box->getE().rows();
+  }
 
-  V.row(0) = RowVector3d(0.0, 0.0, 0.0);
-  V.row(1) = RowVector3d(  b, 0.0, 0.0);
-  V.row(2) = RowVector3d(0.0, 0.0,   b);
-  V.row(3) = RowVector3d(  b, 0.0,   b);
-  V.row(4) = RowVector3d(0.0,   b, 0.0);
-  V.row(5) = RowVector3d(  b,   b, 0.0);
-  V.row(6) = RowVector3d(0.0,   b,   b);
-  V.row(7) = RowVector3d(  b,   b,   b);
-
-  E.row(0)  = RowVector2i(0, 1);
-  E.row(1)  = RowVector2i(0, 2);
-  E.row(2)  = RowVector2i(1, 3);
-  E.row(3)  = RowVector2i(2, 3);
-  E.row(4)  = RowVector2i(0, 4);
-  E.row(5)  = RowVector2i(1, 5);
-  E.row(6)  = RowVector2i(2, 6);
-  E.row(7)  = RowVector2i(3, 7);
-  E.row(8)  = RowVector2i(4, 5);
-  E.row(9)  = RowVector2i(4, 6);
-  E.row(10) = RowVector2i(5, 7);
-  E.row(11) = RowVector2i(6, 7);
-
+  // Reallocate to the proper amount of space.
+  V.resize(total_v_rows, 3);
+  V.setZero();
+  E.resize(total_e_rows, 3);
+  E.setZero();
+  C.resize(total_v_rows, 3);
   C.rowwise() = RowVector3d(1.0, 0.5, 0.5);
+
+  // The current block of vertices and faces.
+  int total_v = 0;
+  int total_e = 0;
+
+  // Add each mesh to be rendered.
+  for (const BoundingBox *box : bounds_) {
+    int nb_v = box->getV().rows();
+    int nb_e = box->getE().rows();
+
+    V.block(total_v, 0, nb_v, 3) = box->getV();
+    E.block(total_e, 0, nb_e, 3) = box->getE().array() + total_e;
+
+    // Get the next offset.
+    total_v += nb_v;
+    total_e += nb_e;
+  }
 }
 
 void Simulation::applyImpulses() {
@@ -349,17 +357,19 @@ void Simulation::getGravityForce(VectorXd &force) const {
 
 void Simulation::getBoundaryForce(VectorXd &force) const {
   for (int i = 0; i < particles_.size(); i++) {
-    for (int j = 0; j < 3; j++) {
-      double m = particles_[i]->m;
-      double p = particles_[i]->c(j);
-      double k = params->penalty_coefficient;
-      double b_min = params->boundary_min;
-      double b_max = params->boundary_max;
+    for (const BoundingBox *box : bounds_) {
+      Vector3d u = box->intersects(particles_[i]->c);
+      double c = u.squaredNorm();
 
-      if (p < b_min)
-        force(i * 3 + j) += (b_min - p) * k * m;
-      if (p > b_max)
-        force(i * 3 + j) += (b_max - p) * k * m;
+      // Not in the box.
+      if (c <= 1e-8)
+        continue;
+
+      Vector3d u_hat = u.normalized();
+      double m = particles_[i]->m;
+      double k = params->penalty_coefficient;
+
+      force.segment<3>(i * 3) += k * m * c * u_hat;
     }
   }
 }
@@ -426,4 +436,7 @@ Simulation::~Simulation() {
 
   for (Particle *particle : particles_)
     delete particle;
+
+  for (BoundingBox *box : bounds_)
+    delete box;
 }

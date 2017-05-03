@@ -3,13 +3,16 @@
 
 #include "parameters.h"
 #include "particle.h"
+#include "bounding_box.h"
 
 #include <vector>
 
 // begin namespace Scenes.
 namespace Scenes {
 
-std::vector<Particle*> dropOnPlane(Parameters *params);
+void dropOnPlane(Parameters *params,
+                 std::vector<Particle*> &particles,
+                 std::vector<BoundingBox*> &bounds);
 
 } // end namespace Scenes.
 
