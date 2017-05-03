@@ -3,6 +3,7 @@
 #include "timer.h"
 
 #include <igl/jet.h>
+#include <igl/viewer/Viewer.h>
 
 #include <nanogui/textbox.h>
 #include <nanogui/slider.h>
@@ -77,8 +78,12 @@ bool init(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
 
   viewer.ngui->addVariable("Grid Resolution", params->resolution);
   viewer.ngui->addWidget("Offset", makeSlider(params->surface, panel));
-  viewer.ngui->addButton("Show surface",
-                         [params](){ params->show_surface ^= true; });
+  viewer.ngui->addButton("Show Velocity",
+                         [params](){ params->view_mode = ViewMode::VELOCITY; });
+  viewer.ngui->addButton("Show Density",
+                         [params](){ params->view_mode = ViewMode::DENSITY; });
+  viewer.ngui->addButton("Show Surface",
+                         [params](){ params->view_mode = ViewMode::SURFACE; });
 
   //////////////////////////////////////////////////////////////////////
   // Simulation controls.
@@ -106,7 +111,11 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
   if (key == ' ')
     params->paused ^= true;
   else if (key == 'S')
-    params->show_surface ^= true;
+    params->view_mode = ViewMode::SURFACE;
+  else if (key == 'D')
+    params->view_mode = ViewMode::DENSITY;
+  else if (key == 'V')
+    params->view_mode = ViewMode::VELOCITY;
   else if (key == 'R')
     sim->reset();
 
@@ -153,7 +162,28 @@ bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
   // Turn the scalars into colors.
   if (C.rows() > 0) {
     MatrixX3d C_jet;
-    igl::jet(C, true, C_jet);
+
+    // Custom jet from blue to white.
+    if (params->view_mode == ViewMode::VELOCITY) {
+      C_jet.resize(C.rows(), 3);
+
+      RowVector3d white(1.0, 1.0, 1.0);
+      RowVector3d blue(0.0, 0.0, 1.0);
+
+      double min_x = 0.0;
+      double max_x = params->fluid_velocity_max;
+
+      for (int i = 0; i < C.rows(); i++) {
+        double x = C(i);
+
+        // Linearly interpolate.
+        double alpha = min(1.0, (x - min_x) / (max_x - min_x));
+        C_jet.row(i) = (1.0 - alpha) * blue + alpha * white;
+      }
+    }
+    else {
+      igl::jet(C, true, C_jet);
+    }
 
     viewer.data.set_colors(C_jet);
   }

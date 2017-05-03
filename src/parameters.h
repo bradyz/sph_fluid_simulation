@@ -3,6 +3,12 @@
 
 #include "mesh.h"
 
+enum ViewMode {
+  DENSITY,
+  SURFACE,
+  VELOCITY
+};
+
 class Parameters {
 
 public:
@@ -25,11 +31,13 @@ public:
 
   double kernel_radius;
 
-  bool show_surface;
+  ViewMode view_mode;
   double surface;
   int resolution;
 
   double fps_cap;
+
+  double fluid_velocity_max;
 
   Mesh *sphere_mesh;
 

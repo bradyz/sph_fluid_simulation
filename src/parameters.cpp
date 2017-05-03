@@ -1,7 +1,5 @@
 #include "parameters.h"
 
-#include <cmath>
-
 void Parameters::reset() {
   paused = true;
   time_step = 0.05;
@@ -23,9 +21,12 @@ void Parameters::reset() {
 
   kernel_radius = 0.500;
 
-  show_surface = false;
+  view_mode = ViewMode::DENSITY;
+
   surface = 1.0;
   resolution = 30;
 
   fps_cap = 20.0;
+
+  fluid_velocity_max = 1.0;
 }

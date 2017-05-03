@@ -176,7 +176,7 @@ void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
 }
 
 void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
-  if (params->show_surface) {
+  if (params->view_mode == ViewMode::SURFACE) {
     C.resize(0);
 
     VectorXd samples;
@@ -216,8 +216,12 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
     int nb_v = particle->getV().rows();
     int nb_f = particle->getF().rows();
 
-    for (int i = total_v; i < total_v + nb_v; i++)
-      C(i) = log(particle->rho);
+    for (int i = total_v; i < total_v + nb_v; i++) {
+      if (params->view_mode == ViewMode::DENSITY)
+        C(i) = log(particle->rho);
+      else if (params->view_mode == ViewMode::VELOCITY)
+        C(i) = particle->v.squaredNorm();
+    }
 
     V.block(total_v, 0, nb_v, 3) = particle->getV();
     F.block(total_f, 0, nb_f, 3) = particle->getF().array() + total_v;
