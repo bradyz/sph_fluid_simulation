@@ -69,7 +69,7 @@ void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
 
   particles_ = Scenes::dropOnPlane(params);
-  bvh_tree_ = new BVHTree(particles_);
+  bvh_ = new BVHTree(particles_);
 
   // Reverse mapping.
   for (int i = 0; i < particles_.size(); i++)
@@ -83,7 +83,7 @@ void Simulation::initialize() {
 void Simulation::reset() {
   cout << "Resetting simulation." << endl;
 
-  delete bvh_tree_;
+  delete bvh_;
 
   for (Particle *particle : particles_)
     delete particle;
@@ -116,10 +116,10 @@ void Simulation::step() {
     particles_[i]->c += h * particles_[i]->v;
 
   // Clean up previous timestep tree.
-  if (bvh_tree_ != nullptr)
-    delete bvh_tree_;
+  if (bvh_ != nullptr)
+    delete bvh_;
 
-  bvh_tree_ = new BVHTree(particles_);
+  bvh_ = new BVHTree(particles_);
 
   updateDensities();
   applyImpulses();
@@ -139,10 +139,10 @@ void Simulation::step() {
 double Simulation::getScore(const Vector3d& q) const {
   double score = 0.0;
 
-  vector<Collision> collisions;
-  bvh_tree_->getCollisions(q, params->kernel_radius, collisions);
+  double r = params->kernel_radius;
+  vector<Collision> *collisions = bvh_->getCollisions(q, r);
 
-  for (Collision &collision : collisions) {
+  for (Collision &collision : *collisions) {
     int b = particle_to_index_.at(collision.hit);
 
     double v = particles_[b]->getVolume();
@@ -267,12 +267,10 @@ void Simulation::applyImpulses() {
   unordered_map<int, unordered_map<int, bool> > visited;
 
   for (int a = 0; a < n; a++) {
-    const Particle *particle = particles_[a];
+    double r = particles_[a]->r;
+    vector<Collision> *collisions = bvh_->getCollisions(particles_[a]->c, r);
 
-    vector<Collision> collisions;
-    bvh_tree_->getCollisions(particle->c, particle->r, collisions);
-
-    for (Collision &collision : collisions) {
+    for (Collision &collision : *collisions) {
       int b = particle_to_index_.at(collision.hit);
 
       // Ignore self collision and previously resolved collisions.
@@ -311,10 +309,10 @@ void Simulation::updateDensities() {
   for (int a = 0; a < particles_.size(); a++) {
     double rho_i = 0.0;
 
-    vector<Collision> collisions;
-    bvh_tree_->getCollisions(particles_[a]->c, params->kernel_radius, collisions);
+    double r = params->kernel_radius;
+    vector<Collision> *collisions  = bvh_->getCollisions(particles_[a]->c, r);
 
-    for (Collision &collision : collisions) {
+    for (Collision &collision : *collisions) {
       int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
@@ -366,10 +364,10 @@ void Simulation::getPressureForce(VectorXd &force) const {
   for (int a = 0 ; a < particles_.size(); a++) {
     Vector3d f_i(0.0, 0.0, 0.0);
 
-    vector<Collision> collisions;
-    bvh_tree_->getCollisions(particles_[a]->c, params->kernel_radius, collisions);
+    double r = params->kernel_radius;
+    vector<Collision> *collisions = bvh_->getCollisions(particles_[a]->c, r);
 
-    for (Collision &collision : collisions) {
+    for (Collision &collision : *collisions) {
       int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
@@ -393,10 +391,10 @@ void Simulation::getViscosityForce(VectorXd &force) const {
   for (int a = 0; a < particles_.size(); a++) {
     Vector3d f_i(0.0, 0.0, 0.0);
 
-    vector<Collision> collisions;
-    bvh_tree_->getCollisions(particles_[a]->c, params->kernel_radius, collisions);
+    double r = params->kernel_radius;
+    vector<Collision> *collisions = bvh_->getCollisions(particles_[a]->c, r);
 
-    for (Collision &collision : collisions) {
+    for (Collision &collision : *collisions) {
       int b = particle_to_index_.at(collision.hit);
 
       double m = particles_[b]->m;
@@ -420,7 +418,7 @@ void Simulation::getViscosityForce(VectorXd &force) const {
 
 Simulation::~Simulation() {
   delete params;
-  delete bvh_tree_;
+  delete bvh_;
 
   for (Particle *particle : particles_)
     delete particle;

@@ -26,4 +26,6 @@ void Parameters::reset() {
   show_surface = false;
   surface = 1.0;
   resolution = 30;
+
+  fps_cap = 20.0;
 }

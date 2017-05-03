@@ -45,7 +45,7 @@ public:
 private:
   std::vector<Particle*> particles_;
 
-  BVHTree *bvh_tree_;
+  BVHTree *bvh_;
   std::unordered_map<const Particle*, int> particle_to_index_;
 
 };

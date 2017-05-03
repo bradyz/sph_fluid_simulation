@@ -53,7 +53,7 @@ BVHNode::BVHNode(vector<Particle*> particles) {
   }
 
   // Leaf.
-  if (particles.size() <= 1)
+  if (particles.size() <= 8)
     return;
 
   int axis = 0;
@@ -103,7 +103,14 @@ BVHTree::BVHTree(const vector<Particle*> &particles) {
   root = new BVHNode(particles);
 }
 
-void BVHTree::getCollisions(const Vector3d &query, double radius,
-                            vector<Collision> &collisions) const {
-  root->getCollisions(query, radius, collisions);
+vector<Collision> *BVHTree::getCollisions(const Vector3d &query, double radius) {
+  pair<const Vector3d, double> map_key = make_pair(query, radius);
+
+  if (cache_.find(map_key) == cache_.end()) {
+    cache_[map_key] = vector<Collision>();
+
+    root->getCollisions(query, radius, cache_[map_key]);
+  }
+
+  return &cache_[map_key];
 }

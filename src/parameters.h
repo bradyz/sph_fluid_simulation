@@ -29,6 +29,8 @@ public:
   double surface;
   int resolution;
 
+  double fps_cap;
+
   Mesh *sphere_mesh;
 
   Parameters() {
