@@ -19,8 +19,6 @@ public:
 
   double coefficient_of_restitution;
   double penalty_coefficient;
-  double boundary_min;
-  double boundary_max;
 
   int nb_particles;                                 // number particles.
   double radius;                                    // render radius.

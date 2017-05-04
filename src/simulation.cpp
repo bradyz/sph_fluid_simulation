@@ -69,6 +69,7 @@ void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
 
   Scenes::dropOnPlane(params, particles_, bounds_);
+  Scenes::damOpening(params, particles_, bounds_);
   bvh_ = new BVHTree(particles_);
 
   // Reverse mapping.
@@ -113,6 +114,10 @@ void Simulation::step() {
         exit(1);
       }
     }
+
+    // Hack.
+    if (particles_[i]->v.norm() > 5.0)
+      particles_[i]->v.setZero();
   }
 
   // Velocity Verlet (update position, then velocity).
@@ -160,7 +165,7 @@ double Simulation::getScore(const Vector3d& q) const {
 
 // Samples the balls at many points
 void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
-  double b = params->boundary_max;
+  double b = 10.0;
 
   S.resize(res * res * res);
   P.resize(res * res * res, 3);
@@ -238,8 +243,8 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
 
 void Simulation::getBounds(MatrixX3d &V, MatrixX2i &E, MatrixX3d &C) const {
   // Find out the total number of vertex and edge rows needed.
-  int total_v_rows = 0;
-  int total_e_rows = 0;
+  int total_v_rows = 4;
+  int total_e_rows = 3;
 
   for (const BoundingBox *box : bounds_) {
     total_v_rows += box->getV().rows();
@@ -251,12 +256,26 @@ void Simulation::getBounds(MatrixX3d &V, MatrixX2i &E, MatrixX3d &C) const {
   V.setZero();
   E.resize(total_e_rows, 3);
   E.setZero();
-  C.resize(total_v_rows, 3);
-  C.rowwise() = RowVector3d(1.0, 0.5, 0.5);
+  C.resize(total_e_rows, 3);
+  C.rowwise() = RowVector3d(0.0, 0.0, 0.0);
+
+  // Coordinate axes.
+  V.row(0) = RowVector3d(0.0, 0.0, 0.0);
+  V.row(1) = RowVector3d(1.0, 0.0, 0.0);
+  V.row(2) = RowVector3d(0.0, 1.0, 0.0);
+  V.row(3) = RowVector3d(0.0, 0.0, 1.0);
+
+  E.row(0) = RowVector2i(0, 1);
+  E.row(1) = RowVector2i(0, 2);
+  E.row(2) = RowVector2i(0, 3);
+
+  C.row(0) = RowVector3d(1.0, 0.0, 0.0);
+  C.row(1) = RowVector3d(0.0, 1.0, 0.0);
+  C.row(2) = RowVector3d(0.0, 0.0, 1.0);
 
   // The current block of vertices and faces.
-  int total_v = 0;
-  int total_e = 0;
+  int total_v = 4;
+  int total_e = 3;
 
   // Add each mesh to be rendered.
   for (const BoundingBox *box : bounds_) {
@@ -264,7 +283,7 @@ void Simulation::getBounds(MatrixX3d &V, MatrixX2i &E, MatrixX3d &C) const {
     int nb_e = box->getE().rows();
 
     V.block(total_v, 0, nb_v, 3) = box->getV();
-    E.block(total_e, 0, nb_e, 3) = box->getE().array() + total_e;
+    E.block(total_e, 0, nb_e, 3) = box->getE().array() + total_v;
 
     // Get the next offset.
     total_v += nb_v;
@@ -343,6 +362,7 @@ VectorXd Simulation::getForces() const {
   force.setZero();
 
   getGravityForce(force);
+  getPenaltyForce(force);
   getBoundaryForce(force);
   getPressureForce(force);
   getViscosityForce(force);
@@ -353,6 +373,45 @@ VectorXd Simulation::getForces() const {
 void Simulation::getGravityForce(VectorXd &force) const {
   for (int i = 0; i < particles_.size(); i++)
     force(i * 3 + 1) += particles_[i]->m * params->gravity;
+}
+
+void Simulation::getPenaltyForce(VectorXd &force) const {
+  int n = particles_.size();
+
+  unordered_map<int, unordered_map<int, bool> > visited;
+
+  for (int a = 0; a < n; a++) {
+    double r = particles_[a]->r;
+    vector<Collision> *collisions = bvh_->getCollisions(particles_[a]->c, r);
+
+    for (Collision &collision : *collisions) {
+      int b = particle_to_index_.at(collision.hit);
+
+      // Ignore self collision and previously resolved collisions.
+      if (a == b)
+        continue;
+      else if (visited[a][b])
+        continue;
+
+      // Mark collision as resolved.
+      visited[a][b] = true;
+      visited[b][a] = true;
+
+      // Vector from b to a.
+      Vector3d n = (particles_[a]->c - particles_[b]->c).normalized();
+      double c = n.norm();
+
+      // Actually not touching.
+      if (c > particles_[a]->r + particles_[b]->r)
+        continue;
+
+      Vector3d n_hat = n.normalized();
+      double k = params->penalty_coefficient;
+
+      force.segment<3>(3 * a) -= c * c * k * n_hat;
+      force.segment<3>(3 * b) += c * c * k * n_hat;
+    }
+  }
 }
 
 void Simulation::getBoundaryForce(VectorXd &force) const {

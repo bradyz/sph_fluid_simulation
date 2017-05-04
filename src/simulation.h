@@ -37,6 +37,7 @@ public:
 
   Eigen::VectorXd getForces() const;
   void getGravityForce(Eigen::VectorXd &force) const;
+  void getPenaltyForce(Eigen::VectorXd &force) const;
   void getBoundaryForce(Eigen::VectorXd &force) const;
   void getPressureForce(Eigen::VectorXd &force) const;
   void getViscosityForce(Eigen::VectorXd &force) const;

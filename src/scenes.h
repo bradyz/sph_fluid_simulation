@@ -14,6 +14,10 @@ void dropOnPlane(Parameters *params,
                  std::vector<Particle*> &particles,
                  std::vector<BoundingBox*> &bounds);
 
+void damOpening(Parameters *params,
+                std::vector<Particle*> &particles,
+                std::vector<BoundingBox*> &bounds);
+
 } // end namespace Scenes.
 
 #endif

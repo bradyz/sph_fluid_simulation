@@ -156,8 +156,8 @@ bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
 
   // Update the viewer.
   viewer.data.clear();
-  viewer.data.set_edges(P, E, EC);
   viewer.data.set_mesh(V, F);
+  viewer.data.set_edges(P, E, EC);
 
   // Turn the scalars into colors.
   if (C.rows() > 0) {

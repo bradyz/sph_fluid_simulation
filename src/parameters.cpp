@@ -6,10 +6,8 @@ void Parameters::reset() {
 
   gravity = -9.8;
 
-  coefficient_of_restitution = 0.2;
-  penalty_coefficient = 1e4;
-  boundary_min = 0.0;
-  boundary_max = 5.0;
+  coefficient_of_restitution = 0.8;
+  penalty_coefficient = 1e6;
 
   nb_particles = 7;
 
@@ -19,7 +17,7 @@ void Parameters::reset() {
   viscocity = 0.5;
   gas_constant = 20.0;
 
-  kernel_radius = 0.25;
+  kernel_radius = 0.5;
 
   view_mode = ViewMode::DENSITY;
 
