@@ -149,8 +149,7 @@ void Simulation::step() {
   current_time += h;
 }
 
-// Sample the fluid at a single point for marching cubes
-double Simulation::getScore(const Vector3d& q) const {
+double Simulation::velocityScore(const Vector3d& q) const {
   Vector3d gradient(0.0, 0.0, 0.0);
 
   vector<Collision> *collisions = bvh_->getCollisions(q, params->kernel_radius);
@@ -167,9 +166,46 @@ double Simulation::getScore(const Vector3d& q) const {
   return params->surface - gradient.norm();
 }
 
+double Simulation::marchingScore(const Vector3d& q) const {
+  double score = 0.0;
+
+  vector<Collision> *collisions = bvh_->getCollisions(q, params->kernel_radius);
+  for (Collision &collision : *collisions) {
+    int b = particle_to_index_.at(collision.hit);
+
+    double radius = cbrt(3.0 / 4.0 / M_PI * particles_[b]->getVolume());
+    double part_score = radius * radius / (particles_[b]->c - q).squaredNorm();
+
+    score += part_score;
+  }
+
+  return -log(score + 1e-4);
+}
+
 // Samples the balls at many points
 void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
-  double b = 10.0;
+  double minX = 0.0;
+  double maxX = 0.0;
+
+  double minY = 0.0;
+  double maxY = 0.0;
+
+  double minZ = 0.0;
+  double maxZ = 0.0;
+
+  for (BoundingBox* box : bounds_) {
+    MatrixX3d V = box->getV();
+    for (int i = 0; i < V.rows(); ++i) {
+      minX = min(minX, V(i, 0));
+      maxX = max(maxX, V(i, 0));
+
+      minY = min(minY, V(i, 1));
+      maxY = max(maxY, V(i, 1));
+
+      minZ = min(minZ, V(i, 2));
+      maxZ = max(maxZ, V(i, 2));
+    }
+  }
 
   S.resize(res * res * res);
   P.resize(res * res * res, 3);
@@ -177,12 +213,12 @@ void Simulation::sampleFluid(VectorXd &S, MatrixX3d &P, const int& res) const {
   for (int i = 0; i < res; ++i) {
     for (int j = 0; j < res; ++j) {
       for (int k = 0; k < res; ++k) {
-        const double x = b * i / res;
-        const double y = b * j / res;
-        const double z = b * k / res;
+        const double x = (maxX - minX) * i / res + minX;
+        const double y = (maxX - minX) * j / res + minY;
+        const double z = (maxX - minX) * k / res + minZ;
 
         P.row(i + res * (j + res * k)) = RowVector3d(x, y, z);
-        S(i + res * (j + res * k)) = getScore(RowVector3d(x, y, z));
+        S(i + res * (j + res * k)) = marchingScore(RowVector3d(x, y, z));
       }
     }
   }
@@ -197,6 +233,14 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
     int res = params->resolution;
 
     sampleFluid(samples, positions, res);
+
+    /*
+    cout << "Samples: " << endl;
+    cout << samples << endl;
+
+    cout << "Positions: " << endl;
+    cout << positions << endl;
+    */
 
     igl::copyleft::marching_cubes(samples, positions, res, res, res, V, F);
 
@@ -233,7 +277,7 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
       if (params->view_mode == ViewMode::DENSITY)
         C(i) = log(particle->rho);
       else if (params->view_mode == ViewMode::VELOCITY)
-        C(i) = getScore(particle->c);
+        C(i) = velocityScore(particle->c);
     }
 
     V.block(total_v, 0, nb_v, 3) = particle->getV();
