@@ -11,8 +11,8 @@ enum ViewMode {
 
 enum SceneMode {
   DROP,
+  BUNNY,
   DAM,
-  SLOSH,
 };
 
 class Parameters {
@@ -43,6 +43,7 @@ public:
 
   double fps_cap;
 
+  double fluid_velocity_min;
   double fluid_velocity_max;
   double jet_min;
   double jet_max;

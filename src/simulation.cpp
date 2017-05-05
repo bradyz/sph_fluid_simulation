@@ -70,10 +70,10 @@ void Simulation::initialize() {
 
   if (params->scene_mode == SceneMode::DROP)
     Scenes::dropOnPlane(params, particles_, bounds_);
+  else if (params->scene_mode == SceneMode::BUNNY)
+    Scenes::dropBunny(params, particles_, bounds_);
   else if (params->scene_mode == SceneMode::DAM)
     Scenes::damOpening(params, particles_, bounds_);
-  else if (params->scene_mode == SceneMode::SLOSH)
-    Scenes::sloshBox(params, particles_, bounds_);
 
   bvh_ = new BVHTree(particles_);
 
@@ -151,21 +151,20 @@ void Simulation::step() {
 
 // Sample the fluid at a single point
 double Simulation::getScore(const Vector3d& q) const {
-  double score = 0.0;
+  Vector3d gradient(0.0, 0.0, 0.0);
 
-  double r = params->kernel_radius;
-  vector<Collision> *collisions = bvh_->getCollisions(q, r);
+  vector<Collision> *collisions = bvh_->getCollisions(q, params->kernel_radius);
 
   for (Collision &collision : *collisions) {
     int b = particle_to_index_.at(collision.hit);
 
     double v = particles_[b]->getVolume();
-    double w = kernel(q, particles_[b]->c, params->kernel_radius);
+    Vector3d w = kernelGradient(q, particles_[b]->c, params->kernel_radius);
 
-    score += v * w;
+    gradient += v * w;
   }
 
-  return params->surface - score;
+  return params->surface - gradient.norm();
 }
 
 // Samples the balls at many points
@@ -234,7 +233,7 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
       if (params->view_mode == ViewMode::DENSITY)
         C(i) = log(particle->rho);
       else if (params->view_mode == ViewMode::VELOCITY)
-        C(i) = particle->v.squaredNorm();
+        C(i) = getScore(particle->c);
     }
 
     V.block(total_v, 0, nb_v, 3) = particle->getV();

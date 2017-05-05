@@ -119,11 +119,13 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
   else if (key == '1')
     params->scene_mode = SceneMode::DROP;
   else if (key == '2')
-    params->scene_mode = SceneMode::DAM;
+    params->scene_mode = SceneMode::BUNNY;
   else if (key == '3')
-    params->scene_mode = SceneMode::SLOSH;
-  else if (key == 'R')
+    params->scene_mode = SceneMode::DAM;
+  else if (key == 'R') {
     sim->reset();
+    viewer.ngui->refresh();
+  }
 
   return false;
 }
@@ -176,11 +178,11 @@ bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
       RowVector3d white(1.0, 1.0, 1.0);
       RowVector3d blue(0.0, 0.0, 1.0);
 
-      double min_x = 0.0;
+      double min_x = params->fluid_velocity_min;
       double max_x = params->fluid_velocity_max;
 
       for (int i = 0; i < C.rows(); i++) {
-        double x = C(i);
+        double x = -C(i) + params->surface;
 
         // Linearly interpolate.
         double alpha = min(1.0, (x - min_x) / (max_x - min_x));

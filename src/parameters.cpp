@@ -1,7 +1,7 @@
 #include "parameters.h"
 
 void Parameters::reset() {
-  scene_mode = SceneMode::SLOSH;
+  scene_mode = SceneMode::DAM;
 
   paused = true;
   time_step = 0.05;
@@ -28,7 +28,8 @@ void Parameters::reset() {
 
   fps_cap = 15.0;
 
-  fluid_velocity_max = 1.0;
+  fluid_velocity_min = 0.4;
+  fluid_velocity_max = 0.9;
   jet_min = 2.8;
   jet_max = 3.8;
 }

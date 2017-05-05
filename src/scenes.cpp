@@ -87,6 +87,7 @@ void Scenes::dropOnPlane(Parameters *params,
   bounds.clear();
 
   params->time_step = 0.05;
+  params->viscocity = 2.0;
 
   waterDrop(params, particles, params->nb_particles, Vector3d(0.0, 3.0, 0.0));
   waterDrop(params, particles, params->nb_particles, Vector3d(1.0, 5.0, 0.0));
@@ -97,33 +98,15 @@ void Scenes::dropOnPlane(Parameters *params,
   bounds.push_back(horizontalPlane(-b, -b, b, b));
 }
 
+// TODO:
+void Scenes::dropBunny(Parameters *params,
+                      vector<Particle*> &particles,
+                      vector<BoundingBox*> &bounds) {
+}
+
 void Scenes::damOpening(Parameters *params,
                         vector<Particle*> &particles,
                         vector<BoundingBox*> &bounds) {
-  particles.clear();
-  bounds.clear();
-
-  waterDrop(params, particles, params->nb_particles, Vector3d(3.0, 1.0, 0.0));
-
-  double b = 5.0;
-  double h = 8.0;
-
-  // Floor.
-  bounds.push_back(horizontalPlane(-b, -b, b, b));
-
-  // Walls.
-  bounds.push_back(verticalPlane(-b, -b, -b,  b, h));
-  bounds.push_back(verticalPlane(-b, -b,  b, -b, h));
-  bounds.push_back(verticalPlane( b, -b,  b,  b, h));
-  bounds.push_back(verticalPlane(-b,  b,  b,  b, h));
-
-  // Dam.
-  bounds.push_back(verticalPlane(b - 4.0, -b, b - 4.0, b, h));
-}
-
-void Scenes::sloshBox(Parameters *params,
-                      vector<Particle*> &particles,
-                      vector<BoundingBox*> &bounds) {
   particles.clear();
   bounds.clear();
 
@@ -133,7 +116,7 @@ void Scenes::sloshBox(Parameters *params,
   params->viscocity = 0.1;
 
   double w = 0.6;
-  double l = 1.2;
+  double l = 1.8;
   double h = 5.0;
 
   // Floor.
@@ -147,5 +130,5 @@ void Scenes::sloshBox(Parameters *params,
 
   fillBox(params, particles,
           Vector3d(-l + 0.3,     0.0, -w + 0.3),
-          Vector3d(     0.3, 0.8 * h,  w - 0.3));
+          Vector3d(     0.3, 0.5 * h,  w - 0.3));
 }
