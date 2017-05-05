@@ -116,6 +116,12 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
     params->view_mode = ViewMode::DENSITY;
   else if (key == 'V')
     params->view_mode = ViewMode::VELOCITY;
+  else if (key == '1')
+    params->scene_mode = SceneMode::DROP;
+  else if (key == '2')
+    params->scene_mode = SceneMode::DAM;
+  else if (key == '3')
+    params->scene_mode = SceneMode::SLOSH;
   else if (key == 'R')
     sim->reset();
 
@@ -182,7 +188,7 @@ bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
       }
     }
     else {
-      igl::jet(C, true, C_jet);
+      igl::jet(C, params->jet_min, params->jet_max, C_jet);
     }
 
     viewer.data.set_colors(C_jet);

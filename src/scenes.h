@@ -18,6 +18,10 @@ void damOpening(Parameters *params,
                 std::vector<Particle*> &particles,
                 std::vector<BoundingBox*> &bounds);
 
+void sloshBox(Parameters *params,
+              std::vector<Particle*> &particles,
+              std::vector<BoundingBox*> &bounds);
+
 } // end namespace Scenes.
 
 #endif

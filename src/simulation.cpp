@@ -68,8 +68,13 @@ double kernelLaplacian(const Vector3d &x, const Vector3d &x_i, double s) {
 void Simulation::initialize() {
   cout << "Initializing simulation." << endl;
 
-  Scenes::dropOnPlane(params, particles_, bounds_);
-  Scenes::damOpening(params, particles_, bounds_);
+  if (params->scene_mode == SceneMode::DROP)
+    Scenes::dropOnPlane(params, particles_, bounds_);
+  else if (params->scene_mode == SceneMode::DAM)
+    Scenes::damOpening(params, particles_, bounds_);
+  else if (params->scene_mode == SceneMode::SLOSH)
+    Scenes::sloshBox(params, particles_, bounds_);
+
   bvh_ = new BVHTree(particles_);
 
   // Reverse mapping.
@@ -408,8 +413,8 @@ void Simulation::getPenaltyForce(VectorXd &force) const {
       Vector3d n_hat = n.normalized();
       double k = params->penalty_coefficient;
 
-      force.segment<3>(3 * a) -= c * c * k * n_hat;
-      force.segment<3>(3 * b) += c * c * k * n_hat;
+      force.segment<3>(3 * a) += c * c * k * n_hat;
+      force.segment<3>(3 * b) -= c * c * k * n_hat;
     }
   }
 }

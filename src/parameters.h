@@ -6,12 +6,20 @@
 enum ViewMode {
   DENSITY,
   SURFACE,
-  VELOCITY
+  VELOCITY,
+};
+
+enum SceneMode {
+  DROP,
+  DAM,
+  SLOSH,
 };
 
 class Parameters {
 
 public:
+  SceneMode scene_mode;
+
   bool paused;                                      // animation on.
   double time_step;                                 // s? hopefully.
 
@@ -36,6 +44,8 @@ public:
   double fps_cap;
 
   double fluid_velocity_max;
+  double jet_min;
+  double jet_max;
 
   Mesh *sphere_mesh;
 
