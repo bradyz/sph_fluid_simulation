@@ -149,7 +149,7 @@ void Simulation::step() {
   current_time += h;
 }
 
-// Sample the fluid at a single point
+// Sample the fluid at a single point for marching cubes
 double Simulation::getScore(const Vector3d& q) const {
   Vector3d gradient(0.0, 0.0, 0.0);
 
@@ -370,6 +370,7 @@ VectorXd Simulation::getForces() const {
   getBoundaryForce(force);
   getPressureForce(force);
   getViscosityForce(force);
+  getInterfaceForce(force);
 
   return force;
 }
@@ -489,6 +490,43 @@ void Simulation::getViscosityForce(VectorXd &force) const {
       f_i += (mu_i + mu_j) / 2.0 * m * (v_j - v_i) / rho_j * dw2dr;
     }
 
+    force.segment<3>(a * 3) += f_i;
+  }
+}
+
+void Simulation::getInterfaceForce(VectorXd &force) const {
+  for (int a = 0; a < particles_.size(); a++) {
+    Vector3d f_i;
+    f_i.setZero();
+
+    vector<Collision>* collisions = bvh_->getCollisions(particles_[a]->c,
+                                                        params->kernel_radius);
+
+    // Normal is the gradient of the interface
+    Vector3d normal;
+    normal.setZero();
+
+    // d2c is the laplacian of interface
+    double d2c = 0.0;
+
+    for (Collision &collision : *collisions) {
+      int b = particle_to_index_.at(collision.hit);
+
+      double m = particles_[b]->m;
+      double c_j = particles_[b]->interface_color;
+      double rho_j = particles_[b]->rho;
+
+      Vector3d dw = kernelGradient(particles_[a]->c, particles_[b]->c,
+                                   params->kernel_radius);
+
+      double d2w = kernelLaplacian(particles_[a]->c, particles_[b]->c,
+                                   params->kernel_radius);
+
+      normal += m * c_j / rho_j * dw;
+      d2c += m * c_j / rho_j * d2w;
+    }
+
+    f_i += -params->interface_sigma * d2c * normal.normalized();
     force.segment<3>(a * 3) += f_i;
   }
 }

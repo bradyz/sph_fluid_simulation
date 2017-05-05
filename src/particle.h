@@ -20,6 +20,9 @@ public:
 
   double mu;                                        // viscocity, N s / m^3.
 
+  double interface_color;                           // unitless, -.5 for polar, +.5 otherwise
+  double surface_color;                             // unitless, 1 for liquid, 0 for air
+
   Particle(const Mesh *mesh) : mesh_(mesh) { }
 
   double getPressure() const { return k * (rho - rho_0); }

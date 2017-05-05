@@ -34,6 +34,8 @@ public:
   double density;                                   // kg / m^3.
   double viscocity;                                 // N s / m^3.
   double gas_constant;                              // N m / kg.
+  double interface_sigma;                           // Scaling of interface force
+  double surface_sigma;                             // Scaling of surface force
 
   double kernel_radius;
 

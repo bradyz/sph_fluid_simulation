@@ -36,6 +36,9 @@ void waterDrop(Parameters *params, vector<Particle*> &particles, int n,
         particle->rho = params->density;
         particle->mu = params->viscocity;
 
+        particle->interface_color = -0.5;
+        particle->surface_color = 1.0;
+
         particles.push_back(particle);
       }
     }
@@ -60,6 +63,9 @@ void fillBox(Parameters *params, vector<Particle*> &particles,
         particle->rho_0 = params->density;
         particle->rho = params->density;
         particle->mu = params->viscocity;
+
+        particle->interface_color = -0.5;
+        particle->surface_color = 1.0;
 
         particles.push_back(particle);
       }
@@ -121,6 +127,9 @@ void Scenes::dropBunny(Parameters *params,
     particle->rho_0 = params->density;
     particle->rho = params->density;
     particle->mu = params->viscocity;
+
+    particle->interface_color = -0.5;
+    particle->surface_color = 1.0;
 
     particles.push_back(particle);
   }
