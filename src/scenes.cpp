@@ -102,6 +102,39 @@ void Scenes::dropOnPlane(Parameters *params,
 void Scenes::dropBunny(Parameters *params,
                       vector<Particle*> &particles,
                       vector<BoundingBox*> &bounds) {
+  params->viscocity = 2.0;
+
+  Mesh bunny("../obj/bunny.obj", 25.0);
+
+  const Eigen::MatrixX3d &V_bunny = bunny.getV();
+
+  for (int i = 0; i < V_bunny.rows(); i++) {
+    Particle *particle = new Particle(params->sphere_mesh);
+
+    particle->m = params->mass;
+    particle->r = params->radius;
+    particle->c = V_bunny.row(i);
+    particle->c += Vector3d(0.0, 1.0, 0.0);
+
+    particle->v = Vector3d(0.0, 0.0, 0.0);
+    particle->k = params->gas_constant;
+    particle->rho_0 = params->density;
+    particle->rho = params->density;
+    particle->mu = params->viscocity;
+
+    particles.push_back(particle);
+  }
+
+  double b = 2.5;
+  double h = 3.0;
+
+  bounds.push_back(horizontalPlane(-b, -b, b, b));
+
+  // Walls.
+  bounds.push_back(verticalPlane(-b, -b, -b,  b, h));
+  bounds.push_back(verticalPlane( b, -b,  b,  b, h));
+  bounds.push_back(verticalPlane(-b, -b,  b, -b, h));
+  bounds.push_back(verticalPlane(-b,  b,  b,  b, h));
 }
 
 void Scenes::damOpening(Parameters *params,
