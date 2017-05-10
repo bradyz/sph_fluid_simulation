@@ -123,6 +123,7 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
   else if (key == '3')
     params->scene_mode = SceneMode::DAM;
   else if (key == 'R') {
+    params->paused = true;
     sim->reset();
     viewer.ngui->refresh();
   }
@@ -133,10 +134,6 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
 bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
   Simulation *sim = wrapper->sim;
   Parameters *params = wrapper->sim->params;
-
-  // Take a step.
-  if (!params->paused)
-    sim->step();
 
   // Update clocks.
   wrapper->updateFps();
