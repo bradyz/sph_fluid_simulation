@@ -1,3 +1,5 @@
+#define IGL_VIEWER_VIEWER_QUIET
+
 #include "viewer_wrapper.h"
 #include "simulation.h"
 #include "timer.h"
@@ -122,6 +124,8 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
     params->scene_mode = SceneMode::BUNNY;
   else if (key == '3')
     params->scene_mode = SceneMode::DAM;
+  else if (key == 'P')
+    params->show_points ^= true;
   else if (key == 'R') {
     params->paused = true;
     sim->reset();
@@ -145,13 +149,8 @@ bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
     return false;
   }
 
-  // Get the current mesh of the simulation. C holds scalar values for colors.
-  MatrixX3d V;
-  MatrixX3i F;
-  VectorXd C;
-
-  // C will have 0 rows if using marching cubes.
-  sim->render(V, F, C);
+  // Update the viewer.
+  viewer.data.clear();
 
   // Bounding boxes.
   MatrixX3d P;
@@ -159,42 +158,59 @@ bool post_draw(igl::viewer::Viewer& viewer, ViewerWrapper *wrapper) {
   MatrixX3d EC;
   sim->getBounds(P, E, EC);
 
-  // Update the viewer.
-  viewer.data.clear();
-  viewer.data.set_mesh(V, F);
   viewer.data.set_edges(P, E, EC);
 
-  // Turn the scalars into colors.
-  if (C.rows() > 0) {
+  if (params->show_points) {
+    MatrixX3d V;
+    VectorXd C;
+    sim->renderPoints(V, C);
+
     MatrixX3d C_jet;
+    igl::jet(C, params->jet_min, params->jet_max, C_jet);
 
-    // Custom jet from blue to white.
-    if (params->view_mode == ViewMode::VELOCITY) {
-      C_jet.resize(C.rows(), 3);
-
-      RowVector3d white(1.0, 1.0, 1.0);
-      RowVector3d blue(0.0, 0.0, 1.0);
-
-      double min_x = params->fluid_velocity_min;
-      double max_x = params->fluid_velocity_max;
-
-      for (int i = 0; i < C.rows(); i++) {
-        double x = -C(i) + params->surface;
-
-        // Linearly interpolate.
-        double alpha = min(1.0, (x - min_x) / (max_x - min_x));
-        C_jet.row(i) = (1.0 - alpha) * blue + alpha * white;
-      }
-    }
-    else {
-      igl::jet(C, params->jet_min, params->jet_max, C_jet);
-    }
-
-    viewer.data.set_colors(C_jet);
+    viewer.data.set_points(V, C_jet);
   }
+  else {
+    // Get the current mesh of the simulation. C holds scalar values for colors.
+    MatrixX3d V;
+    MatrixX3i F;
+    VectorXd C;
+    sim->render(V, F, C);
 
-  if (sim->current_time == 0.0)
-    viewer.core.align_camera_center(V, F);
+    viewer.data.set_mesh(V, F);
+
+    // Turn the scalars into colors.
+    if (C.rows() > 0) {
+      MatrixX3d C_jet;
+
+      // Custom jet from blue to white.
+      if (params->view_mode == ViewMode::VELOCITY) {
+        C_jet.resize(C.rows(), 3);
+
+        RowVector3d white(1.0, 1.0, 1.0);
+        RowVector3d blue(0.0, 0.0, 1.0);
+
+        double min_x = params->fluid_velocity_min;
+        double max_x = params->fluid_velocity_max;
+
+        for (int i = 0; i < C.rows(); i++) {
+          double x = -C(i) + params->surface;
+
+          // Linearly interpolate.
+          double alpha = min(1.0, (x - min_x) / (max_x - min_x));
+          C_jet.row(i) = (1.0 - alpha) * blue + alpha * white;
+        }
+      }
+      else {
+        igl::jet(C, params->jet_min, params->jet_max, C_jet);
+      }
+
+      viewer.data.set_colors(C_jet);
+    }
+
+    if (sim->current_time == 0.0)
+      viewer.core.align_camera_center(V, F);
+  }
 
   // Hacky signal to force LibIgl to refresh render loop.
   glfwPostEmptyEvent();

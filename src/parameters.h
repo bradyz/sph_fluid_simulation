@@ -40,6 +40,8 @@ public:
   double kernel_radius;
 
   ViewMode view_mode;
+  bool show_points;
+
   double surface;
   int resolution;
 

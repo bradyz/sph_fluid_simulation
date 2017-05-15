@@ -47,7 +47,7 @@ void waterDrop(Parameters *params, vector<Particle*> &particles, int n,
 
 void fillBox(Parameters *params, vector<Particle*> &particles,
              const Vector3d &lower, const Vector3d &upper) {
-  double offset = 2.5 * params->radius;
+  double offset = 2.4 * params->radius;
 
   for (double x = lower(0); x <= upper(0); x += offset) {
     for (double y = lower(1); y <= upper(1); y += offset) {
@@ -92,23 +92,23 @@ void Scenes::dropOnPlane(Parameters *params,
   particles.clear();
   bounds.clear();
 
-  params->time_step = 0.05;
+  params->time_step = 0.075;
   params->viscocity = 2.0;
+
+  double b = 2.5;
 
   waterDrop(params, particles, params->nb_particles, Vector3d(0.0, 3.0, 0.0));
   waterDrop(params, particles, params->nb_particles, Vector3d(1.0, 5.0, 0.0));
   waterDrop(params, particles, params->nb_particles, Vector3d(0.0, 7.0, 1.0));
 
-  double b = 5.0;
-
   bounds.push_back(horizontalPlane(-b, -b, b, b));
 }
 
 void Scenes::dropBunny(Parameters *params,
-                      vector<Particle*> &particles,
-                      vector<BoundingBox*> &bounds) {
-  params->viscocity = 2.0;
-  params->time_step = 0.05;
+                       vector<Particle*> &particles,
+                       vector<BoundingBox*> &bounds) {
+  params->viscocity = 1.0;
+  params->time_step = 0.1;
 
   Mesh bunny("../obj/bunny.obj", 25.0);
 
@@ -145,12 +145,12 @@ void Scenes::damOpening(Parameters *params,
   particles.clear();
   bounds.clear();
 
-  params->time_step = 0.1;
+  params->time_step = 0.075;
 
   // Water.
   params->viscocity = 0.1;
 
-  double w = 1.0;
+  double w = 0.5;
   double l = 3.0;
   double h = 5.0;
 
@@ -164,6 +164,6 @@ void Scenes::damOpening(Parameters *params,
   bounds.push_back(verticalPlane(-l,  w,  l,  w, h));
 
   fillBox(params, particles,
-          Vector3d(-l + 0.3,     0.4, -w + 0.3),
-          Vector3d(     0.3, 0.5 * h,  w - 0.3));
+          Vector3d(-l + 0.2,     0.1, -w + 0.2),
+          Vector3d(    -0.5, 0.3 * h,  w - 0.2));
 }

@@ -289,6 +289,20 @@ void Simulation::render(MatrixX3d &V, MatrixX3i &F, VectorXd &C) const {
   }
 }
 
+void Simulation::renderPoints(MatrixX3d &V, VectorXd &C) const {
+  V.resize(particles_.size(), 3);
+  V.setZero();
+  C.resize(particles_.size());
+  C.setZero();
+
+  for (int i = 0; i < particles_.size(); i++) {
+    const Particle *particle = particles_[i];
+
+    V.row(i) = particle->c;
+    C(i) = log(particle->rho);
+  }
+}
+
 void Simulation::getBounds(MatrixX3d &V, MatrixX2i &E, MatrixX3d &C) const {
   // Find out the total number of vertex and edge rows needed.
   int total_v_rows = 4;

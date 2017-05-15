@@ -22,6 +22,7 @@ void Parameters::reset() {
   kernel_radius = 0.25;
 
   view_mode = ViewMode::DENSITY;
+  show_points = false;
 
   surface = 1.0;
   resolution = 30;

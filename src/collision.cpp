@@ -53,7 +53,7 @@ BVHNode::BVHNode(vector<Particle*> particles) {
   }
 
   // Leaf.
-  if (particles.size() <= 8)
+  if (particles.size() <= 4)
     return;
 
   int axis = 0;
