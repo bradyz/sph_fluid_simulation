@@ -45,6 +45,7 @@ public:
   void getPressureForce(Eigen::VectorXd &force) const;
   void getViscosityForce(Eigen::VectorXd &force) const;
   void getInterfaceForce(Eigen::VectorXd &force) const;
+  void getSurfaceForce(Eigen::VectorXd &force) const;
 
   ~Simulation();
 

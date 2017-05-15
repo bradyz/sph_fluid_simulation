@@ -34,3 +34,8 @@ make -j4 && ./sph
 ##Tips
 
 GUI hotkeys - "r" to reset simulation, "space" to to start/stop simulation.
+Press 1 2 or 3 to change scene (and r for the change to take effect).
+
+## eCIS
+
+On our honor, this group has filled out the eCIS survey for Professor Vouga.
